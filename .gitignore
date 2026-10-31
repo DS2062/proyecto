@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Base de datos local
+backend/database.db
+backend/database.db-shm
+backend/database.db-wal
+
+# Reportes generados
+*.pdf
+
+# Sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Simulab: análisis analítico de modelos de líneas de espera M/M/1 con reportes PDF.">
+  <meta name="color-scheme" content="light dark">
+  <title>Simulab · Modelo de colas</title>
+  <script>
+    (() => {
+      try {
+        const guardado = localStorage.getItem("simulab:tema");
+        const tema =
+          guardado === "oscuro" || guardado === "claro"
+            ? guardado
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "oscuro"
+              : "claro";
+        document.documentElement.dataset.tema = tema;
+        document.documentElement.style.colorScheme =
+          tema === "oscuro" ? "dark" : "light";
+      } catch {
+        document.documentElement.dataset.tema = "claro";
+      }
+    })();
+  </script>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="navbar navbar-expand-lg app-navbar sticky-top" aria-label="Navegación principal">
+      <div class="container">
+        <a class="navbar-brand" href="/" aria-label="Simulab, inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 11 12 4l8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6 9.5V20h12V9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10 20v-5h4v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <strong>Simulab</strong>
+          </span>
+        </a>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <a class="module-badge module-badge-button" href="/modelos-de-colas">Modelo de colas</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container app-main" id="panelResultados">
+      <div class="row g-4">
+        <div class="col-lg-4 col-xl-3">
+          <section class="card app-card config-card" aria-labelledby="tituloConfiguracion">
+            <div class="card-body">
+              <div class="section-heading">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 7h10M18 7h2M4 17h2M10 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="16" cy="7" r="2.2" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="8" cy="17" r="2.2" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </span>
+                <div>
+                  <h2 id="tituloConfiguracion">Configura el modelo</h2>
+                </div>
+              </div>
+
+              <form id="formCalculo" novalidate>
+                <div class="mb-3">
+                  <label for="modelo" class="form-label">Modelo de cola</label>
+                  <select class="form-select" id="modelo" name="modelo" required>
+                    <option value="mm1_infinito">M/M/1:(DG/∞/∞) · Cola ilimitada</option>
+                    <option value="mm1_finito">M/M/1:(DG/N/∞) · Capacidad limitada</option>
+                  </select>
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label for="lambda" class="form-label">λ <span class="label-muted">Tasa de llegada</span></label>
+                    <div class="input-group has-validation">
+                      <input type="number" class="form-control" id="lambda" name="lambda" min="0.000000001" max="1000000000" step="any" inputmode="decimal" placeholder="Ej. 8" required aria-describedby="sufijoLambda feedbackLambda">
+                      <span class="input-group-text" id="sufijoLambda">clientes/tiempo</span>
+                      <div class="invalid-feedback" id="feedbackLambda">Ingresa una tasa de llegada mayor que 0.</div>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <label for="mu" class="form-label">μ <span class="label-muted">Tasa de servicio</span></label>
+                    <div class="input-group has-validation">
+                      <input type="number" class="form-control" id="mu" name="mu" min="0.000000001" max="1000000000" step="any" inputmode="decimal" placeholder="Ej. 10" required aria-describedby="sufijoMu feedbackMu">
+                      <span class="input-group-text" id="sufijoMu">clientes/tiempo</span>
+                      <div class="invalid-feedback" id="feedbackMu">Ingresa una tasa de servicio mayor que 0.</div>
+                    </div>
+                  </div>
+
+                  <div class="col-12" id="grupoN">
+                    <label for="N" class="form-label">N <span class="label-muted">Capacidad del sistema</span></label>
+                    <div class="input-group has-validation">
+                      <input type="number" class="form-control" id="N" name="N" min="1" max="10000" step="1" inputmode="numeric" placeholder="Ej. 5" aria-describedby="sufijoN feedbackN">
+                      <span class="input-group-text" id="sufijoN">clientes</span>
+                      <div class="invalid-feedback" id="feedbackN">N debe ser un entero positivo.</div>
+                    </div>
+                    <div class="form-text">Incluye el cliente que está en servicio. La tabla puede terminar antes si la acumulada es prácticamente 1.</div>
+                  </div>
+
+                  <div class="col-12" id="grupoNMax">
+                    <label for="nMax" class="form-label">nMax <span class="label-muted">Corte de tabla</span></label>
+                    <div class="input-group has-validation">
+                      <input type="number" class="form-control" id="nMax" name="nMax" min="1" max="10000" step="1" inputmode="numeric" value="50" aria-describedby="sufijoNMax feedbackNMax">
+                      <span class="input-group-text" id="sufijoNMax">filas</span>
+                      <div class="invalid-feedback" id="feedbackNMax">nMax debe ser un entero entre 1 y 10,000.</div>
+                    </div>
+                    <div class="form-text">La tabla se detiene en nMax o antes si la probabilidad acumulada es prácticamente 1.</div>
+                  </div>
+                </div>
+
+                <div id="formError" class="alert alert-danger d-none mt-3" role="alert" aria-live="polite"></div>
+
+                <div class="config-actions">
+                  <button type="submit" class="btn btn-primary flex-grow-1" id="btnCalcular">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Calcular</span>
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" id="btnLimpiar">
+                    Limpiar
+                  </button>
+                </div>
+                <button type="button" class="btn btn-link btn-sm example-link" id="btnEjemplo">
+                  Cargar un ejemplo (λ = 8, μ = 10)
+                </button>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <div class="col-lg-8 col-xl-9">
+          <div class="results-heading">
+            <h2>Resultados del sistema</h2>
+          </div>
+
+          <div class="card app-card panel-card">
+            <div class="card-header panel-tabs-header">
+              <ul class="nav nav-tabs app-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="tab-resultados" data-bs-toggle="tab" data-bs-target="#pane-resultados" type="button" role="tab" aria-controls="pane-resultados" aria-selected="true">Resultados</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-distribucion" data-bs-toggle="tab" data-bs-target="#pane-distribucion" type="button" role="tab" aria-controls="pane-distribucion" aria-selected="false">Distribución</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-probabilidades" data-bs-toggle="tab" data-bs-target="#pane-probabilidades" type="button" role="tab" aria-controls="pane-probabilidades" aria-selected="false">Probabilidades</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-historial" data-bs-toggle="tab" data-bs-target="#pane-historial" type="button" role="tab" aria-controls="pane-historial" aria-selected="false">
+                    Historial <span class="tab-count" id="historialCount">0</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="tab-content panel-tab-content" id="mainTabContent">
+              <section class="tab-pane fade show active" id="pane-resultados" role="tabpanel" aria-labelledby="tab-resultados" tabindex="0">
+                <div class="empty-state" id="estadoVacio">
+                  <div class="empty-illustration" aria-hidden="true">
+                    <svg viewBox="0 0 160 110" fill="none">
+                      <rect x="18" y="18" width="124" height="74" rx="14" fill="#eef2ff"/>
+                      <circle cx="48" cy="55" r="12" fill="#c7d2fe"/>
+                      <circle cx="78" cy="55" r="12" fill="#e0e7ff"/>
+                      <circle cx="108" cy="55" r="12" fill="#e0e7ff"/>
+                      <path d="M38 84h84" stroke="#a5b4fc" stroke-width="5" stroke-linecap="round"/>
+                      <path d="M127 30v18M118 39h18" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h3>Aún no hay resultados</h3>
+                  <p>Ingresa λ, μ y, si corresponde, la capacidad N. Después presiona <strong>Calcular</strong>.</p>
+                  <span class="empty-hint">También puedes cargar el ejemplo desde el panel izquierdo.</span>
+                </div>
+
+                <div id="resultadosContenido" class="d-none">
+                  <div class="result-meta">
+                    <div class="result-meta-left">
+                      <span class="calc-id" id="calculoId">Cálculo #0</span>
+                      <span class="meta-separator" aria-hidden="true"></span>
+                      <span id="calculoFecha" class="meta-date"></span>
+                    </div>
+                    <span class="model-badge" id="badgeModelo">M/M/1</span>
+                  </div>
+
+                  <div id="advertenciasResultado" class="mb-3" aria-live="polite"></div>
+
+                  <div class="row g-3 metric-grid">
+                    <div class="col-6 col-xl-4">
+                      <article class="metric-card metric-rho">
+                        <div class="metric-top"><span class="metric-symbol">ρ</span><span class="metric-label">Utilización</span></div>
+                        <strong class="metric-value" id="kpiRho">—</strong>
+                        <span class="metric-caption">Intensidad de tráfico</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                      <article class="metric-card metric-p0">
+                        <div class="metric-top"><span class="metric-symbol">P₀</span><span class="metric-label">Sistema vacío</span></div>
+                        <strong class="metric-value" id="kpiP0">—</strong>
+                        <span class="metric-caption">Probabilidad sin clientes</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                      <article class="metric-card metric-ls">
+                        <div class="metric-top"><span class="metric-symbol">Lₛ</span><span class="metric-label">En el sistema</span></div>
+                        <strong class="metric-value" id="kpiLs">—</strong>
+                        <span class="metric-caption">Clientes promedio</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                      <article class="metric-card metric-lq">
+                        <div class="metric-top"><span class="metric-symbol">Lq</span><span class="metric-label">En cola</span></div>
+                        <strong class="metric-value" id="kpiLq">—</strong>
+                        <span class="metric-caption">Clientes esperando</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                      <article class="metric-card metric-ws">
+                        <div class="metric-top"><span class="metric-symbol">Wₛ</span><span class="metric-label">Tiempo total</span></div>
+                        <strong class="metric-value" id="kpiWs">—</strong>
+                        <span class="metric-caption">En el sistema</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                      <article class="metric-card metric-wq">
+                        <div class="metric-top"><span class="metric-symbol">Wq</span><span class="metric-label">Tiempo en cola</span></div>
+                        <strong class="metric-value" id="kpiWq">—</strong>
+                        <span class="metric-caption">Antes de ser atendido</span>
+                      </article>
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mt-1 d-none" id="metricasFinitas">
+                    <div class="col-6 col-lg-3">
+                      <div class="mini-metric">
+                        <span>λ efectiva</span>
+                        <strong id="kpiLambdaEf">—</strong>
+                        <small>llegadas que ingresan</small>
+                      </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="mini-metric">
+                        <span>λ perdida</span>
+                        <strong id="kpiLambdaPerdida">—</strong>
+                        <small>llegadas bloqueadas</small>
+                      </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="mini-metric">
+                        <span>pN · Bloqueo</span>
+                        <strong id="kpiPN">—</strong>
+                        <small>sistema lleno</small>
+                      </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="mini-metric">
+                        <span>Utilización real</span>
+                        <strong id="kpiUtilizacion">—</strong>
+                        <small>servidor ocupado</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="row g-4 mt-0">
+                    <div class="col-xl-7">
+                      <div class="subsection-heading">
+                        <h3>Detalle del cálculo</h3>
+                      </div>
+                      <div class="table-responsive rounded-table">
+                        <table class="table app-table align-middle mb-0">
+                          <caption class="visually-hidden">Métricas calculadas del modelo de línea de espera</caption>
+                          <thead>
+                            <tr><th scope="col">Métrica</th><th scope="col">Símbolo</th><th scope="col" class="text-end">Valor</th></tr>
+                          </thead>
+                          <tbody id="tablaResultados"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="col-xl-5">
+                      <div class="insight-card h-100">
+                        <div class="insight-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4M8 14a6 6 0 1 1 8 0c-.9.7-1.3 1.2-1.4 2H9.4C9.3 15.2 8.9 14.7 8 14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Lectura del sistema</h3>
+                        <ul class="insight-list" id="interpretacion"></ul>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-auto" id="btnIrDistribucion">
+                          Ver distribución
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-distribucion" role="tabpanel" aria-labelledby="tab-distribucion" tabindex="0">
+                <div class="empty-state" id="distribucionVacia">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <path d="M25 76h90M35 76V50m20 26V33m20 43V42m20 34V24" stroke="#a5b4fc" stroke-width="8" stroke-linecap="round"/>
+                      <path d="M22 22h96" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="4 5"/>
+                    </svg>
+                  </div>
+                  <h3>Distribución pendiente</h3>
+                  <p>Calcula un modelo para visualizar p(n), la probabilidad acumulada y sus gráficas.</p>
+                </div>
+
+                <div id="distribucionContenido" class="d-none">
+                  <p class="distribution-note d-none" id="distNota"></p>
+
+                  <div class="row g-4">
+                    <div class="col-xl-6">
+                      <div class="chart-card h-100">
+                        <div class="chart-header">
+                          <div>
+                            <h3>Probabilidad absoluta</h3>
+                            <p>p(n) de encontrar exactamente n clientes</p>
+                          </div>
+                          <span class="chart-symbol">p(n)</span>
+                        </div>
+                        <div class="chart-wrap">
+                          <canvas id="graficaAbsoluta" aria-label="Gráfica de probabilidad absoluta" role="img"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-xl-6">
+                      <div class="chart-card h-100">
+                        <div class="chart-header">
+                          <div>
+                            <h3>Probabilidad acumulada</h3>
+                            <p>P(X ≤ n) de tener hasta n clientes</p>
+                          </div>
+                          <span class="chart-symbol">F(n)</span>
+                        </div>
+                        <div class="chart-wrap">
+                          <canvas id="graficaAcumulada" aria-label="Gráfica de probabilidad acumulada" role="img"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="table-card mt-4">
+                    <div class="table-card-header">
+                      <h3>Tabla de distribución</h3>
+                      <span class="table-count" id="distTablaConteo">0 filas</span>
+                    </div>
+                    <div class="distribution-table-wrap">
+                      <table class="table app-table app-table-compact mb-0">
+                        <caption class="visually-hidden">Distribución de probabilidad del número de clientes en el sistema</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">n</th>
+                            <th scope="col" class="text-end">p(n)</th>
+                            <th scope="col" class="text-end">P(X ≤ n)</th>
+                            <th scope="col" class="d-none d-sm-table-cell">Interpretación</th>
+                          </tr>
+                        </thead>
+                        <tbody id="tablaDistribucion"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-probabilidades" role="tabpanel" aria-labelledby="tab-probabilidades" tabindex="0">
+                <div class="empty-state" id="probabilidadNoDisponible">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <rect x="28" y="20" width="84" height="62" rx="10" fill="#eef2ff"/>
+                      <path d="M40 40h60M40 53h38M40 66h48" stroke="#a5b4fc" stroke-width="5" stroke-linecap="round"/>
+                      <circle cx="101" cy="72" r="14" fill="#4f46e5"/>
+                      <path d="M95 72h12M101 66v12" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h3>Calculadora de probabilidades</h3>
+                  <p>Primero calcula un modelo para habilitar eventos como P(X ≤ k), P(X ≥ k) y rangos.</p>
+                </div>
+
+                <div id="probabilidadCalculadora" class="d-none">
+                  <div class="probability-context">
+                    <span class="context-dot"></span>
+                    <span id="contextoProbabilidad">Cálculo vigente</span>
+                  </div>
+                  <div class="row g-4 mt-0">
+                    <div class="col-lg-6">
+                      <div class="probability-form-card">
+                        <h3>Define el evento</h3>
+                        <p class="subsection-copy">La probabilidad se calcula sobre el último modelo resuelto.</p>
+                        <form id="formProbabilidad" novalidate>
+                          <div class="mb-3">
+                            <label for="tipoProbabilidad" class="form-label">Tipo de probabilidad</label>
+                            <select class="form-select" id="tipoProbabilidad">
+                              <option value="menor_igual">P(X ≤ k)</option>
+                              <option value="mayor_igual">P(X ≥ k)</option>
+                              <option value="rango">P(a ≤ X ≤ b)</option>
+                            </select>
+                          </div>
+                          <div class="mb-3" id="grupoK">
+                            <label for="probK" class="form-label">Valor de k <span class="label-muted">entero</span></label>
+                            <input type="number" class="form-control" id="probK" min="0" step="1" inputmode="numeric" placeholder="Ej. 3" aria-describedby="feedbackProbK">
+                            <div class="invalid-feedback" id="feedbackProbK">Ingresa un entero válido.</div>
+                          </div>
+                          <div class="row g-3 d-none" id="grupoRango">
+                            <div class="col-6">
+                              <label for="probA" class="form-label">a <span class="label-muted">desde</span></label>
+                              <input type="number" class="form-control" id="probA" min="0" step="1" inputmode="numeric" placeholder="0" aria-describedby="feedbackProbA">
+                              <div class="invalid-feedback" id="feedbackProbA">Valor inválido.</div>
+                            </div>
+                            <div class="col-6">
+                              <label for="probB" class="form-label">b <span class="label-muted">hasta</span></label>
+                              <input type="number" class="form-control" id="probB" min="0" step="1" inputmode="numeric" placeholder="5" aria-describedby="feedbackProbB">
+                              <div class="invalid-feedback" id="feedbackProbB">Valor inválido.</div>
+                            </div>
+                          </div>
+                          <div id="probabilidadError" class="alert alert-danger d-none mt-3" role="alert"></div>
+                          <div class="probability-actions">
+                            <button type="submit" class="btn btn-primary" id="btnCalcularProbabilidad">
+                              Calcular probabilidad
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnLimpiarProbabilidad">Limpiar</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                    <div class="col-lg-6">
+                      <div class="probability-result-card h-100">
+                        <div class="probability-empty" id="probabilidadVacia">
+                          <span class="probability-empty-icon" aria-hidden="true">P</span>
+                          <h3>Tu resultado aparecerá aquí</h3>
+                          <p>Selecciona un evento y calcula. El resultado también se incluirá en el PDF.</p>
+                        </div>
+                        <div class="probability-result d-none" id="probabilidadResultado" aria-live="polite">
+                          <span class="result-event" id="probDescripcion">P(X ≤ 0)</span>
+                          <strong class="result-number" id="probValor">0.000000</strong>
+                          <span class="result-percent" id="probPorcentaje">0.0000 %</span>
+                          <div class="result-formula" id="probFormula"></div>
+                          <p class="result-context" id="probDetalle"></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-historial" role="tabpanel" aria-labelledby="tab-historial" tabindex="0">
+                <div class="history-header">
+                  <div>
+                    <h3>Cálculos recientes</h3>
+                    <p id="historialInfo">Los resultados se guardan automáticamente en SQLite.</p>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefrescarHistorial">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 9a7 7 0 0 1 11.4-2L20 12M4 12l2.5 5a7 7 0 0 0 11.4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Actualizar
+                  </button>
+                </div>
+
+                <div id="historialCargando" class="history-loading d-none" aria-live="polite">
+                  <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                  Cargando historial…
+                </div>
+                <div id="historialVacio" class="empty-state compact d-none">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <rect x="32" y="22" width="76" height="58" rx="9" fill="#eef2ff"/>
+                      <path d="M45 40h50M45 53h42M45 66h30" stroke="#a5b4fc" stroke-width="5" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h3>Sin cálculos guardados</h3>
+                  <p>Ejecuta tu primer cálculo para verlo en el historial.</p>
+                </div>
+                <div class="table-responsive rounded-table d-none" id="historialTablaWrap">
+                  <table class="table app-table history-table align-middle mb-0">
+                    <caption class="visually-hidden">Historial de cálculos guardados</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Fecha</th>
+                        <th scope="col">Modelo</th>
+                        <th scope="col" class="text-end">λ</th>
+                        <th scope="col" class="text-end">μ</th>
+                        <th scope="col" class="text-end">N</th>
+                        <th scope="col" class="text-end">ρ</th>
+                        <th scope="col" class="text-end">Lq</th>
+                        <th scope="col" class="text-end">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaHistorial"></tbody>
+                  </table>
+                </div>
+                <div class="history-pagination d-none" id="historialPaginacion">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHistorialAnterior">
+                    Anterior
+                  </button>
+                  <span class="history-page-label" id="historialPagina">Página 1 de 1</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHistorialSiguiente">
+                    Siguiente
+                  </button>
+                </div>
+                <div class="history-footer-note" id="historialPie"></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="report-actions">
+            <button type="button" class="btn btn-outline-primary" id="btnPDF" disabled>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Generar PDF</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <button class="theme-toggle" type="button" data-tema-toggle aria-label="Activar tema oscuro" aria-pressed="false" title="Cambiar a tema oscuro">
+    <span class="theme-toggle-icon theme-toggle-sun" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span class="theme-toggle-icon theme-toggle-moon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </span>
+  </button>
+
+  <script src="vendor/bootstrap.bundle.min.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="theme.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
