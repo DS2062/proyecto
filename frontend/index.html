@@ -45,6 +45,14 @@
           </span>
         </a>
         <div class="d-flex align-items-center gap-2 ms-auto">
+          <button type="button" class="btn-guia" data-bs-toggle="modal" data-bs-target="#guiaUso" aria-label="Abrir guía para llenar los campos">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+              <path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="17" r="1.1" fill="currentColor"/>
+            </svg>
+            <span class="btn-guia-texto">Guía</span>
+          </button>
           <a class="module-badge module-badge-button" href="/modelos-de-colas">Modelo de colas</a>
         </div>
       </div>
@@ -536,6 +544,79 @@
       </svg>
     </span>
   </button>
+
+  <div class="modal fade" id="guiaUso" tabindex="-1" aria-labelledby="guiaUsoTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+      <div class="modal-content guia-modal">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="guiaUsoTitulo">Guía rápida</h2>
+            <p class="guia-subtitulo">Cómo llenar los campos del modelo de colas</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar guía"></button>
+        </div>
+        <div class="modal-body">
+          <p class="guia-intro">
+            Elige el modelo y completa los tres campos. Usa la misma unidad de tiempo
+            para λ y μ (por ejemplo, clientes por hora).
+          </p>
+
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <section class="guia-modelo" aria-labelledby="guiaModeloInfinito">
+                <h3 id="guiaModeloInfinito">M/M/1 · Cola ilimitada</h3>
+                <dl class="guia-campos">
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">λ</span> Tasa de llegada</dt>
+                    <dd>Cuántos clientes llegan por unidad de tiempo. Ej. 8 por hora. Debe ser mayor que 0.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">μ</span> Tasa de servicio</dt>
+                    <dd>Cuántos clientes puede atender el servidor por unidad de tiempo. Ej. 10 por hora. Debe ser mayor que λ para que la cola no crezca sin límite.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">nMax</span> Corte de tabla</dt>
+                    <dd>Último número de cliente que quieres ver en la tabla y las gráficas. Ej. 50. Entero entre 1 y 10,000.</dd>
+                  </div>
+                </dl>
+                <p class="guia-ejemplo">Ejemplo: λ = 8, μ = 10, nMax = 50 → ρ = 0.8.</p>
+              </section>
+            </div>
+
+            <div class="col-lg-6">
+              <section class="guia-modelo" aria-labelledby="guiaModeloFinito">
+                <h3 id="guiaModeloFinito">M/M/1/N · Capacidad limitada</h3>
+                <dl class="guia-campos">
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">λ</span> Tasa de llegada</dt>
+                    <dd>Cuántos clientes llegan por unidad de tiempo. Ej. 5 por hora. Debe ser mayor que 0.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">μ</span> Tasa de servicio</dt>
+                    <dd>Cuántos clientes puede atender el servidor por unidad de tiempo. Ej. 10 por hora. Debe ser mayor que 0.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">N</span> Capacidad del sistema</dt>
+                    <dd>Número máximo de clientes dentro del sistema, incluido el que está siendo atendido. Ej. 50. Entero entre 1 y 10,000.</dd>
+                  </div>
+                </dl>
+                <p class="guia-ejemplo">Ejemplo: λ = 5, μ = 10, N = 50 → ρ = 0.5. Si el sistema se llena, las llegadas se rechazan.</p>
+              </section>
+            </div>
+          </div>
+
+          <p class="guia-nota">
+            <strong>ρ = λ / μ.</strong> En cola ilimitada debe ser menor que 1; en capacidad
+            limitada puede superar 1 porque N limita el sistema. Los tiempos Ws y Wq se
+            muestran en la misma unidad que uses para λ y μ.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="vendor/bootstrap.bundle.min.js"></script>
   <script src="vendor/chart.umd.min.js"></script>

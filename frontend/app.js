@@ -342,7 +342,7 @@
     const familia = getComputedStyle(document.body).fontFamily;
     window.Chart.defaults.font.family = familia;
     window.Chart.defaults.color = paletaGraficas().tick;
-    window.Chart.defaults.font.size = 11;
+    window.Chart.defaults.font.size = 12;
   }
 
   function manejarCambioTema() {
@@ -623,6 +623,48 @@
     actualizarBotonPDF();
   }
 
+  function lecturasSistema(calculo) {
+    const parametros = calculo.parametros || {};
+    const resultados = calculo.resultados || {};
+    const finito = calculo.modelo === MODELO_FINITO;
+    const utilizacion = Number(resultados.utilizacion ?? resultados.rho ?? 0);
+
+    const items = [
+      {
+        html: `En promedio hay <strong>${fmtNumero(resultados.Ls)}</strong> clientes en el sistema y <strong>${fmtNumero(resultados.Lq)}</strong> esperando en cola.`,
+        texto: `En promedio hay ${fmtNumero(resultados.Ls)} clientes en el sistema y ${fmtNumero(resultados.Lq)} esperando en cola.`,
+      },
+      {
+        html: `Un cliente permanece <strong>${fmtNumero(resultados.Ws)}</strong> unidades de tiempo en el sistema; de ellas, <strong>${fmtNumero(resultados.Wq)}</strong> corresponden a la espera.`,
+        texto: `Un cliente permanece ${fmtNumero(resultados.Ws)} unidades de tiempo en el sistema; de ellas, ${fmtNumero(resultados.Wq)} corresponden a la espera.`,
+      },
+      {
+        html: `El servidor está ocupado el <strong>${fmtPorcentaje(utilizacion)}</strong> del tiempo.`,
+        texto: `El servidor está ocupado el ${fmtPorcentaje(utilizacion)} del tiempo.`,
+      },
+    ];
+
+    if (finito) {
+      items.push(
+        {
+          html: `La capacidad es <strong>N = ${parametros.N}</strong>; la probabilidad de encontrar el sistema lleno es <strong>${fmtNumero(resultados.pN)}</strong> (${fmtPorcentaje(resultados.pN)}).`,
+          texto: `La capacidad es N = ${parametros.N}; la probabilidad de encontrar el sistema lleno es ${fmtNumero(resultados.pN)} (${fmtPorcentaje(resultados.pN)}).`,
+        },
+        {
+          html: `Ingresan <strong>${fmtNumero(resultados.lambda_efectiva)}</strong> clientes por unidad de tiempo y se pierden <strong>${fmtNumero(resultados.lambda_perdida)}</strong>.`,
+          texto: `Ingresan ${fmtNumero(resultados.lambda_efectiva)} clientes por unidad de tiempo y se pierden ${fmtNumero(resultados.lambda_perdida)}.`,
+        }
+      );
+    } else {
+      items.push({
+        html: `La cola es ilimitada y el sistema es estable porque <strong>ρ = ${fmtNumero(resultados.rho)} &lt; 1</strong>.`,
+        texto: `La cola es ilimitada y el sistema es estable porque ρ = ${fmtNumero(resultados.rho)} < 1.`,
+      });
+    }
+
+    return items;
+  }
+
   function renderResultados(calculo) {
     const parametros = calculo.parametros || {};
     const resultados = calculo.resultados || {};
@@ -695,25 +737,9 @@
       )
       .join("");
 
-    const utilizacion = Number(resultados.utilizacion ?? resultados.rho ?? 0);
-    const items = [
-      `En promedio hay <strong>${fmtNumero(resultados.Ls)}</strong> clientes en el sistema y <strong>${fmtNumero(resultados.Lq)}</strong> esperando en cola.`,
-      `Un cliente permanece <strong>${fmtNumero(resultados.Ws)}</strong> unidades de tiempo en el sistema; de ellas, <strong>${fmtNumero(resultados.Wq)}</strong> corresponden a la espera.`,
-      `El servidor está ocupado el <strong>${fmtPorcentaje(utilizacion)}</strong> del tiempo.`,
-    ];
-
-    if (finito) {
-      items.push(
-        `La capacidad es <strong>N = ${parametros.N}</strong>; la probabilidad de encontrar el sistema lleno es <strong>${fmtNumero(resultados.pN)}</strong> (${fmtPorcentaje(resultados.pN)}).`,
-        `Ingresan <strong>${fmtNumero(resultados.lambda_efectiva)}</strong> clientes por unidad de tiempo y se pierden <strong>${fmtNumero(resultados.lambda_perdida)}</strong>.`
-      );
-    } else {
-      items.push(
-        `La cola es ilimitada y el sistema es estable porque <strong>ρ = ${fmtNumero(resultados.rho)} &lt; 1</strong>.`
-      );
-    }
-
-    $("#interpretacion").innerHTML = items.map((item) => `<li>${item}</li>`).join("");
+    $("#interpretacion").innerHTML = lecturasSistema(calculo)
+      .map((item) => `<li>${item.html}</li>`)
+      .join("");
   }
 
   function renderDistribucion(calculo) {
@@ -828,8 +854,8 @@
       padding: 10,
       cornerRadius: 8,
       displayColors: false,
-      titleFont: { size: 11, weight: "600" },
-      bodyFont: { size: 11 },
+      titleFont: { size: 12, weight: "600" },
+      bodyFont: { size: 12 },
       callbacks: {
         title: (items) => `n = ${items[0]?.label ?? ""}`,
         label: (context) => `${etiqueta} = ${formateador(context.parsed.y)}`,
@@ -846,7 +872,7 @@
         maxRotation: 0,
         autoSkip: true,
         maxTicksLimit: 12,
-        font: { size: 10 },
+        font: { size: 11 },
       },
     };
   }
@@ -861,7 +887,7 @@
       ticks: {
         color: paletaGraficas().tick,
         padding: 7,
-        font: { size: 10 },
+        font: { size: 11 },
         maxTicksLimit: 6,
         callback: (valor) => {
           const numeroValor = Number(valor);
@@ -1489,6 +1515,131 @@
     }
   }
 
+  let fondoCabeceraPDF;
+
+  function cargarFondoCabeceraPDF() {
+    if (fondoCabeceraPDF !== undefined) return Promise.resolve(fondoCabeceraPDF);
+
+    return new Promise((resolve) => {
+      const imagen = new Image();
+      imagen.decoding = "async";
+
+      imagen.onload = () => {
+        try {
+          const ancho = 1800;
+          const alto = Math.round((ancho * 32) / 210);
+          const canvas = document.createElement("canvas");
+          canvas.width = ancho;
+          canvas.height = alto;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("El navegador no permite dibujar el fondo.");
+
+          // Mismo encuadre que la navbar: cubrir el ancho y recortar en vertical.
+          const anchoOriginal = imagen.naturalWidth || 1800;
+          const altoOriginal = imagen.naturalHeight || 360;
+          const altoDibujo = altoOriginal * (ancho / anchoOriginal);
+          const recorte = Math.max(0, altoDibujo - alto);
+          ctx.drawImage(imagen, 0, -recorte * 0.42, ancho, altoDibujo);
+
+          // Velo oscuro de la navbar para conservar la legibilidad del texto.
+          const velo = ctx.createLinearGradient(0, 0, ancho, 0);
+          velo.addColorStop(0, "rgba(2, 8, 26, 0.92)");
+          velo.addColorStop(0.46, "rgba(4, 18, 52, 0.52)");
+          velo.addColorStop(1, "rgba(2, 9, 27, 0.84)");
+          ctx.fillStyle = velo;
+          ctx.fillRect(0, 0, ancho, alto);
+
+          const brillo = ctx.createRadialGradient(
+            ancho * 0.88,
+            0,
+            0,
+            ancho * 0.88,
+            0,
+            ancho * 0.42
+          );
+          brillo.addColorStop(0, "rgba(34, 211, 238, 0.22)");
+          brillo.addColorStop(1, "rgba(34, 211, 238, 0)");
+          ctx.fillStyle = brillo;
+          ctx.fillRect(0, 0, ancho, alto);
+
+          fondoCabeceraPDF = canvas.toDataURL("image/png");
+          resolve(fondoCabeceraPDF);
+        } catch (error) {
+          console.warn("No se pudo preparar el fondo de la cabecera del PDF:", error);
+          fondoCabeceraPDF = null;
+          resolve(null);
+        }
+      };
+
+      imagen.onerror = () => {
+        console.warn("No se pudo cargar el fondo de la cabecera del PDF.");
+        fondoCabeceraPDF = null;
+        resolve(null);
+      };
+
+      imagen.src = new URL("navbar-bg.svg", document.baseURI).href;
+    });
+  }
+
+  function dibujarLecturaPDF(doc, fuente, unicode, calculo, inicioY, anchoPagina) {
+    const margen = 14;
+    const relleno = 5;
+    const ancho = anchoPagina - margen * 2;
+    const sangria = 5.4;
+    const anchoTexto = ancho - relleno * 2 - sangria;
+    const tamano = 8.4;
+    const altoLinea = 4.05;
+    const separacion = 2.4;
+
+    const items = lecturasSistema(calculo).map(({ texto }) =>
+      unicode ? texto : texto.replace(/ρ/g, "rho")
+    );
+
+    doc.setFont(fuente, "normal");
+    doc.setFontSize(tamano);
+    const lineas = items.map((texto) => doc.splitTextToSize(texto, anchoTexto));
+    const altoTexto = lineas.reduce(
+      (total, filas) => total + filas.length * altoLinea + separacion,
+      0
+    );
+    const alto = relleno * 2 + 8 + altoTexto - separacion;
+
+    doc.setFillColor(17, 28, 49);
+    doc.setDrawColor(34, 50, 80);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(margen, inicioY, ancho, alto, 3, 3, "FD");
+
+    const iconoX = margen + relleno;
+    const iconoY = inicioY + relleno;
+    doc.setFillColor(26, 47, 70);
+    doc.roundedRect(iconoX, iconoY, 7, 7, 1.5, 1.5, "F");
+    doc.setDrawColor(34, 211, 238);
+    doc.setLineWidth(0.35);
+    doc.circle(iconoX + 3.5, iconoY + 2.9, 1.35, "S");
+    doc.line(iconoX + 2.85, iconoY + 4.55, iconoX + 4.15, iconoY + 4.55);
+    doc.line(iconoX + 3.15, iconoY + 5.25, iconoX + 3.85, iconoY + 5.25);
+
+    doc.setFont(fuente, "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(248, 250, 252);
+    doc.text("Lectura del sistema", iconoX + 10, iconoY + 5);
+
+    let cursorY = inicioY + relleno + 10;
+    lineas.forEach((filas) => {
+      doc.setFillColor(34, 211, 238);
+      doc.circle(margen + relleno + 1.3, cursorY - 1.2, 0.62, "F");
+      doc.setFont(fuente, "normal");
+      doc.setFontSize(tamano);
+      doc.setTextColor(179, 193, 214);
+      filas.forEach((linea, indice) => {
+        doc.text(linea, margen + relleno + sangria, cursorY + indice * altoLinea);
+      });
+      cursorY += filas.length * altoLinea + separacion;
+    });
+
+    return inicioY + alto;
+  }
+
   function etiquetaPDF(calculo, unicode) {
     if (unicode) return calculo.modelo_etiqueta;
     return calculo.modelo === MODELO_FINITO
@@ -1496,7 +1647,7 @@
       : "M/M/1:(DG/inf/inf)";
   }
 
-  function construirPDF(calculo, probabilidad, imagenes, usarFuentes) {
+  function construirPDF(calculo, probabilidad, imagenes, usarFuentes, fondoCabecera) {
     const jsPDF = window.jspdf?.jsPDF;
     if (!jsPDF) throw new Error("jsPDF no está disponible.");
     if (typeof document.createElement("canvas").getContext !== "function") {
@@ -1533,6 +1684,22 @@
     // Cabecera
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, anchoPagina, 32, "F");
+    if (fondoCabecera) {
+      try {
+        doc.addImage(
+          fondoCabecera,
+          "PNG",
+          0,
+          0,
+          anchoPagina,
+          32,
+          undefined,
+          "FAST"
+        );
+      } catch (error) {
+        console.warn("No se pudo insertar el fondo de la cabecera:", error);
+      }
+    }
     doc.setTextColor(255, 255, 255);
     doc.setFont(fuente, "bold");
     doc.setFontSize(18);
@@ -1542,14 +1709,30 @@
     doc.setTextColor(226, 232, 240);
     doc.text(fecha, anchoPagina - 14, 14, { align: "right" });
 
+    // Lectura del sistema, inmediatamente después de la cabecera.
+    const finLectura = dibujarLecturaPDF(
+      doc,
+      fuente,
+      unicode,
+      calculo,
+      38,
+      anchoPagina
+    );
+
+    let yContenido = finLectura + 10;
+    if (yContenido > 235) {
+      doc.addPage();
+      yContenido = 20;
+    }
+
     doc.setTextColor(15, 23, 42);
     doc.setFont(fuente, "bold");
     doc.setFontSize(16);
-    doc.text("Análisis de línea de espera", 14, 44);
+    doc.text("Análisis de línea de espera", 14, yContenido);
     doc.setFont(fuente, "normal");
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text(modeloTxt, 14, 51);
+    doc.text(modeloTxt, 14, yContenido + 7);
 
     const estilosTabla = {
       theme: "grid",
@@ -1587,7 +1770,7 @@
 
     doc.autoTable({
       ...estilosTabla,
-      startY: 56,
+      startY: yContenido + 12,
       head: [["Parámetros del sistema", "Valor"]],
       body: parametrosPDF,
       columnStyles: { 0: { cellWidth: 72 }, 1: { cellWidth: "auto" } },
@@ -1778,15 +1961,17 @@
     setBotonCargando(boton, true, "Generando PDF…");
 
     try {
-      const [fuentes, imagenes] = await Promise.all([
+      const [fuentes, imagenes, fondoCabecera] = await Promise.all([
         cargarFuentesPDF(),
         obtenerGraficasParaReporte(),
+        cargarFondoCabeceraPDF(),
       ]);
       const doc = construirPDF(
         state.calculo,
         state.probabilidad,
         imagenes,
-        Boolean(fuentes)
+        Boolean(fuentes),
+        fondoCabecera
       );
       const ahora = new Date();
       const marca = `${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(
