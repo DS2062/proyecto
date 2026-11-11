@@ -244,6 +244,25 @@ h1, h2, h3, h4 {
   box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.85);
 }
 
+.module-badge-current {
+  color: #fff;
+  background: rgba(79, 70, 229, 0.34);
+  border-color: rgba(165, 180, 252, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 10px 26px -18px rgba(79, 70, 229, 0.9);
+}
+
+.module-badge-current::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 0.42rem;
+  content: "";
+  background: #67e8f9;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.14);
+}
+
 .btn-guia {
   display: inline-flex;
   align-items: center;
@@ -2440,3 +2459,383 @@ body.modal-open .theme-toggle {
     height: 46px;
   }
 }
+
+/* ==========================================================================
+   Impresión del reporte · Módulo M/M/c
+   ========================================================================== */
+
+.print-header {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 11mm 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .app-navbar,
+  .report-actions,
+  .theme-toggle,
+  .toast-container,
+  .modal,
+  .modal-backdrop,
+  .config-card,
+  .panel-tabs-header,
+  .no-print,
+  #pane-historial {
+    display: none !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+  }
+
+  .app-shell .container {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .print-header {
+    display: flex !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-bottom: 6mm;
+    padding-bottom: 3mm;
+    border-bottom: 1.2pt solid #0f172a;
+  }
+
+  .print-brand {
+    color: #0f172a;
+    font-family: var(--ql-font-display);
+    font-size: 19pt;
+    font-weight: 760;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .print-context,
+  .print-date {
+    color: #475569;
+    font-size: 8.4pt;
+    line-height: 1.35;
+  }
+
+  .print-context {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .print-date {
+    flex: 0 0 auto;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .area-resultados {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .metric-grid > .col-6.col-xl-3,
+  #metricasFinitas > .col-6.col-lg-3 {
+    flex: 0 0 25% !important;
+    width: 25% !important;
+    max-width: 25% !important;
+  }
+
+  #pane-resultados .row > .col-xl-7 {
+    flex: 0 0 58% !important;
+    width: 58% !important;
+    max-width: 58% !important;
+  }
+
+  #pane-resultados .row > .col-xl-5 {
+    flex: 0 0 42% !important;
+    width: 42% !important;
+    max-width: 42% !important;
+  }
+
+  #pane-distribucion .row > .col-xl-6 {
+    flex: 0 0 50% !important;
+    width: 50% !important;
+    max-width: 50% !important;
+  }
+
+  #pane-probabilidades .row > .col-lg-6:first-child {
+    display: none !important;
+  }
+
+  #pane-probabilidades .row > .col-lg-6 {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .row {
+    --bs-gutter-x: 4mm;
+    --bs-gutter-y: 3mm;
+  }
+
+  .panel-card {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .panel-tab-content {
+    padding: 0 !important;
+  }
+
+  .result-meta {
+    margin-bottom: 3mm;
+    padding-bottom: 2.5mm;
+    border-bottom: 0.6pt solid #dbe3ee;
+  }
+
+  .metric-grid {
+    --bs-gutter-x: 3mm;
+    --bs-gutter-y: 3mm;
+  }
+
+  .metric-card {
+    min-height: 0 !important;
+    padding: 7px 8px !important;
+    background: #fff !important;
+    border: 0.6pt solid #dbe3ee !important;
+    border-radius: 5px !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .metric-card::before {
+    display: none !important;
+  }
+
+  .metric-symbol {
+    min-width: 24px !important;
+    height: 24px !important;
+    font-size: 9pt !important;
+    background: #f1f5f9 !important;
+  }
+
+  .metric-label,
+  .metric-caption {
+    color: #64748b !important;
+    font-size: 6.8pt !important;
+  }
+
+  .metric-value {
+    color: #0f172a !important;
+    font-size: 13pt !important;
+  }
+
+  .mini-metric {
+    padding: 6px 8px !important;
+    background: #fff !important;
+    border: 0.6pt solid #dbe3ee !important;
+    break-inside: avoid;
+  }
+
+  .mini-metric > span,
+  .mini-metric small {
+    font-size: 6.8pt !important;
+  }
+
+  .mini-metric strong {
+    font-size: 11pt !important;
+  }
+
+  .insight-card {
+    color: #334155 !important;
+    background: #f8fafc !important;
+    border: 0.6pt solid #dbe3ee !important;
+    border-radius: 6px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .insight-card h3,
+  .insight-list strong {
+    color: #0f172a !important;
+  }
+
+  .insight-icon {
+    color: #0e7490 !important;
+    background: #ecfeff !important;
+    border-color: #bae6fd !important;
+  }
+
+  .insight-list li {
+    color: #334155 !important;
+    font-size: 7.4pt !important;
+  }
+
+  .insight-card .btn {
+    display: none !important;
+  }
+
+  .chart-card,
+  .table-card,
+  .probability-result-card {
+    background: #fff !important;
+    border: 0.6pt solid #dbe3ee !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .chart-header {
+    padding: 2.5mm 3mm 0 !important;
+  }
+
+  .chart-header h3,
+  .table-card-header h3,
+  .subsection-heading h3,
+  .history-header h3 {
+    color: #0f172a !important;
+    font-size: 9pt !important;
+  }
+
+  .chart-header p {
+    color: #64748b !important;
+    font-size: 7pt !important;
+  }
+
+  .chart-symbol,
+  .table-count {
+    color: #475569 !important;
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    font-size: 7pt !important;
+  }
+
+  .chart-wrap {
+    height: auto !important;
+    padding: 0 2mm 2mm !important;
+  }
+
+  .chart-wrap canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .distribution-note {
+    margin-bottom: 3mm !important;
+    font-size: 7.4pt !important;
+  }
+
+  .distribution-table-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-table {
+    font-size: 7.4pt !important;
+  }
+
+  .app-table thead {
+    display: table-header-group;
+  }
+
+  .app-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .app-table thead th,
+  .app-table tbody td {
+    padding: 3px 6px !important;
+  }
+
+  .probability-context {
+    background: #f8fafc !important;
+    border-color: #dbe3ee !important;
+    color: #475569 !important;
+    font-size: 7.6pt !important;
+  }
+
+  .probability-form-card {
+    display: none !important;
+  }
+
+  .probability-result-card {
+    min-height: 0 !important;
+    background: #f8fafc !important;
+  }
+
+  .probability-result {
+    padding: 4mm !important;
+  }
+
+  .result-event {
+    font-size: 9pt !important;
+  }
+
+  .result-number {
+    color: #0f172a !important;
+    font-size: 24pt !important;
+  }
+
+  .result-percent,
+  .result-formula,
+  .result-context {
+    color: #475569 !important;
+    font-size: 8pt !important;
+  }
+
+  .alert {
+    background: #fffbeb !important;
+    border: 0.6pt solid #fde68a !important;
+    color: #854d0e !important;
+    font-size: 7.6pt !important;
+  }
+}
+
+/* ==========================================================================
+   Cambio de tema gradual (barrido)
+   ========================================================================== */
+
+html {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+body {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* Overlay de barrido que se muestra al cambiar de tema */
+.tema-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.55s ease, opacity 0.55s ease;
+  transform: translateX(-100%);
+}
+
+html.tema-cambiando .tema-wipe {
+  transform: translateX(0%);
+  opacity: 1;
+}
+
+html.tema-cambiando.tema-wipe-final .tema-wipe {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+

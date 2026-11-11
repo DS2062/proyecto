@@ -42,6 +42,26 @@
 
   function aplicarTema(tema, { persistir = false } = {}) {
     const siguiente = normalizar(tema) || temaPreferido();
+
+    const crearWipe = () => {
+      let wipe = document.querySelector(".tema-wipe");
+      if (!wipe) {
+        wipe = document.createElement("div");
+        wipe.className = "tema-wipe";
+        document.body.appendChild(wipe);
+      }
+      return wipe;
+    };
+
+    const limpiarWipe = () => {
+      HTML.classList.remove("tema-cambiando", "tema-wipe-final");
+      const wipe = document.querySelector(".tema-wipe");
+      if (wipe) wipe.remove();
+    };
+
+    HTML.classList.add("tema-cambiando");
+    crearWipe();
+
     HTML.dataset.tema = siguiente;
     HTML.style.colorScheme = siguiente === "oscuro" ? "dark" : "light";
     if (persistir) {
@@ -55,6 +75,11 @@
     document.dispatchEvent(
       new CustomEvent("simulab:tema", { detail: { tema: siguiente } })
     );
+
+    window.setTimeout(() => {
+      HTML.classList.add("tema-wipe-final");
+      window.setTimeout(limpiarWipe, 600);
+    }, 120);
   }
 
   function montar() {

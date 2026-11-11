@@ -1,50 +1,81 @@
-## Requisitos Previos
+# Simulab · Módulos de líneas de espera
 
-- **Python 3.10+**: Asegúrate de tener instalado Python.
-- **Git**: Para clonar el repositorio.
+Aplicación web para resolver analíticamente modelos de teoría de colas, con
+persistencia en SQLite, gráficas interactivas y reportes PDF.
 
-## Pasos para la Ejecución
+## Módulos disponibles
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone <URL_DEL_REPOSITORIO>
-   cd proyecto
-   ```
+| Módulo | Modelos | Ruta |
+| --- | --- | --- |
+| M/M/1 | M/M/1:(DG/∞/∞) y M/M/1:(DG/N/∞) | `/modelos-de-colas` |
+| M/M/c | M/M/c:(DG/∞/∞) y M/M/c:(DG/N/∞) | `/modelos-de-colas/mmc` |
 
-2. **Preparar el entorno (recomendado):**
-   Crea un entorno virtual para aislar las dependencias:
-   ```bash
-   # En Windows:
-   python -m venv venv
-   .\venv\Scripts\activate
-   ```
+Cada módulo incluye:
 
-3. **Instalar dependencias:**
-   Instala las librerías necesarias definidas en `requirements.txt`, ubicado en la carpeta backend:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- Cálculo de métricas: ρ, P₀, Ls, Lq, Ws, Wq, servidores activos e inactivos.
+- Distribución de probabilidad `p(n)` y acumulada `F(n)` con Chart.js.
+- Calculadora de probabilidades `P(X ≤ k)`, `P(X ≥ k)` y `P(a ≤ X ≤ b)`.
+- Historial de cálculos guardado en SQLite.
+- Reporte PDF con cabecera, resultados, gráficas y tabla de distribución.
+- Impresión del reporte y tema claro/oscuro.
 
-4. **Ejecutar el servidor:**
-   El backend se ejecuta mediante Flask:
-   ```bash
-   # En Windows:
-   py -m flask --app backend/app.py run
-   ```
-   El servidor estará disponible en `http://127.0.0.1:5000`.
+## Requisitos
 
-5. **Acceder a la aplicación:**
-   Abre tu navegador web y dirígete a `http://127.0.0.1:5000`.
+- Python 3.10+
+- Git
 
-## Ejecución de Pruebas
+## Ejecución local
 
-Para verificar que el sistema funciona correctamente, puedes ejecutar el conjunto de pruebas integrado:
+```powershell
+git clone <URL_DEL_REPOSITORIO>
+cd proyecto
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r backend/requirements.txt
+py backend/app.py
+```
 
-```bash
+Abre `http://127.0.0.1:5000`.
+
+La guía paso a paso también está disponible en [`EJECUCION.md`](EJECUCION.md).
+
+## Pruebas
+
+```powershell
 py -X utf8 -m unittest discover -s backend/tests -v
 ```
 
-## Notas Adicionales
-- La interfaz frontend se sirve directamente desde el backend.
-- Todos los cambios de configuración y estilos están integrados en el código fuente.
-- No se requiere ninguna base de datos externa; el proyecto utiliza SQLite (archivo local).
+## Estructura
+
+```text
+backend/
+  app.py             API REST y servidor Flask
+  database.py        Persistencia SQLite (calculos y calculos_mmc)
+  queueing.py        Motor analítico M/M/1
+  queueing_mmc.py    Motor analítico M/M/c
+  tests/             Pruebas de modelos y API
+frontend/
+  inicio.html        Portada con los módulos
+  index.html         Interfaz M/M/1
+  mmc.html           Interfaz M/M/c
+  app.js             Lógica del módulo M/M/1
+  mmc.js             Lógica del módulo M/M/c
+  styles.css         Estilos, temas, responsive e impresión
+  vendor/            Bootstrap, Chart.js y jsPDF incluidos localmente
+```
+
+## API principal
+
+- `POST /api/calcular` — resuelve un modelo y guarda el cálculo.
+- `POST /api/probabilidad` — calcula un evento de probabilidad.
+- `GET /api/historial?modulo=mmc` — lista cálculos (usa `analitico` por defecto).
+- `GET /api/calculo/<id>?modulo=mmc` — obtiene el detalle de un cálculo.
+- `DELETE /api/calculo/<id>?modulo=mmc` — elimina un cálculo.
+- `GET /api/salud` — estado del servicio.
+
+## Notas
+
+- Toda la matemática se ejecuta en el backend; el frontend solo consume la API.
+- La base SQLite se crea automáticamente en `backend/database.db`.
+- Los recursos del frontend están incluidos en `frontend/vendor`, por lo que la
+  aplicación funciona sin conexión a internet.
