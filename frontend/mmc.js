@@ -447,17 +447,12 @@
   function actualizarModeloUI() {
     const finito = esModeloFinito();
     const grupoN = $("#grupoN");
-    const grupoNMax = $("#grupoNMax");
     const inputN = $("#N");
-    const inputNMax = $("#nMax");
     const inputC = $("#c");
 
     grupoN.classList.toggle("d-none", !finito);
-    grupoNMax.classList.toggle("d-none", finito);
     inputN.disabled = !finito;
-    inputNMax.disabled = finito;
     inputN.required = finito;
-    inputNMax.required = !finito;
 
     const c = Number(inputC.value);
     if (finito && Number.isInteger(c) && c > 0) {
@@ -541,9 +536,11 @@
         marcar("N", `N debe ser mayor o igual que c (${c}).`);
       }
     } else {
-      nMax = leerEnteroInput($("#nMax"), "nMax (corte)", 1, MAX_NMAX, (mensaje) =>
-        marcar("nMax", mensaje)
-      );
+      nMax = leerEnteroInput($("#nMax"), "nMax (corte)", 1, MAX_NMAX, () => {});
+      if (nMax === null) {
+        nMax = 50;
+        $("#nMax").value = "50";
+      }
       if (lambda !== null && mu !== null && c !== null && mu > 0 && c > 0) {
         const factor = lambda / (c * mu);
         if (factor >= 1) {

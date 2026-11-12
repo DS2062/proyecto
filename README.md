@@ -17,7 +17,7 @@ Cada módulo incluye:
 - Calculadora de probabilidades `P(X ≤ k)`, `P(X ≥ k)` y `P(a ≤ X ≤ b)`.
 - Historial de cálculos guardado en SQLite.
 - Reporte PDF con cabecera, resultados, gráficas y tabla de distribución.
-- Impresión del reporte y tema claro/oscuro.
+- Tema claro/oscuro.
 
 ## Requisitos
 
@@ -39,10 +39,14 @@ Abre `http://127.0.0.1:5000`.
 
 La guía paso a paso también está disponible en [`EJECUCION.md`](EJECUCION.md).
 
+Para ubicar funciones, fórmulas y puntos de modificación del código, consulta
+la [`GUIA_TECNICA.md`](GUIA_TECNICA.md).
+
 ## Pruebas
 
 ```powershell
-py -X utf8 -m unittest discover -s backend/tests -v
+cd backend
+py -m unittest discover -s tests -v
 ```
 
 ## Estructura

@@ -422,16 +422,11 @@
   function actualizarModeloUI() {
     const finito = esModeloFinito();
     const grupoN = $("#grupoN");
-    const grupoNMax = $("#grupoNMax");
     const inputN = $("#N");
-    const inputNMax = $("#nMax");
 
     grupoN.classList.toggle("d-none", !finito);
-    grupoNMax.classList.toggle("d-none", finito);
     inputN.disabled = !finito;
-    inputNMax.disabled = finito;
     inputN.required = finito;
-    inputNMax.required = !finito;
   }
 
   /* ========================================================================
@@ -501,9 +496,11 @@
         marcar("N", mensaje)
       );
     } else {
-      nMax = leerEnteroInput($("#nMax"), "nMax (corte)", MAX_NMAX, (mensaje) =>
-        marcar("nMax", mensaje)
-      );
+      nMax = leerEnteroInput($("#nMax"), "nMax (corte)", MAX_NMAX, () => {});
+      if (nMax === null) {
+        nMax = 50;
+        $("#nMax").value = "50";
+      }
       if (lambda !== null && mu !== null && mu > 0 && lambda > 0) {
         const rho = lambda / mu;
         if (rho >= 1) {

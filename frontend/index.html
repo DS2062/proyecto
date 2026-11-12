@@ -115,7 +115,7 @@
                     <div class="form-text">Incluye el cliente que está en servicio. La tabla puede terminar antes si la acumulada es prácticamente 1.</div>
                   </div>
 
-                  <div class="col-12" id="grupoNMax">
+                  <div class="col-12 d-none" id="grupoNMax" aria-hidden="true">
                     <label for="nMax" class="form-label">nMax <span class="label-muted">Corte de tabla</span></label>
                     <div class="input-group has-validation">
                       <input type="number" class="form-control" id="nMax" name="nMax" min="1" max="10000" step="1" inputmode="numeric" value="50" aria-describedby="sufijoNMax feedbackNMax">
@@ -575,12 +575,8 @@
                     <dt><span class="guia-simbolo">μ</span> Tasa de servicio</dt>
                     <dd>Cuántos clientes puede atender el servidor por unidad de tiempo. Ej. 10 por hora. Debe ser mayor que λ para que la cola no crezca sin límite.</dd>
                   </div>
-                  <div class="guia-campo">
-                    <dt><span class="guia-simbolo">nMax</span> Corte de tabla</dt>
-                    <dd>Último número de cliente que quieres ver en la tabla y las gráficas. Ej. 50. Entero entre 1 y 10,000.</dd>
-                  </div>
                 </dl>
-                <p class="guia-ejemplo">Ejemplo: λ = 8, μ = 10, nMax = 50 → ρ = 0.8.</p>
+                <p class="guia-ejemplo">Ejemplo: λ = 8, μ = 10 → ρ = 0.8.</p>
               </section>
             </div>
 
