@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Simulab: simulación de bases de datos con Monte Carlo para las distribuciones Poisson y Exponencial, con gráficas y reportes PDF.">
+  <meta name="color-scheme" content="light dark">
+  <title>Simulab · Simulación Monte Carlo</title>
+  <script>
+    (() => {
+      try {
+        const guardado = localStorage.getItem("simulab:tema");
+        const tema =
+          guardado === "oscuro" || guardado === "claro"
+            ? guardado
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "oscuro"
+              : "claro";
+        document.documentElement.dataset.tema = tema;
+        document.documentElement.style.colorScheme =
+          tema === "oscuro" ? "dark" : "light";
+      } catch {
+        document.documentElement.dataset.tema = "claro";
+      }
+    })();
+  </script>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="mc-page">
+  <div class="app-shell">
+    <nav class="navbar navbar-expand-lg app-navbar sticky-top" aria-label="Navegación principal">
+      <div class="container">
+        <a class="navbar-brand" href="/" aria-label="Simulab, inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 11 12 4l8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6 9.5V20h12V9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10 20v-5h4v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <strong>Simulab</strong>
+          </span>
+        </a>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <button type="button" class="btn-guia" id="btnGuiaMC" data-bs-toggle="modal" data-bs-target="#guiaMC" aria-label="Abrir guía para configurar la simulación Monte Carlo">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+              <path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="17" r="1.1" fill="currentColor"/>
+            </svg>
+            <span class="btn-guia-texto">Guía</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="print-header" aria-hidden="true">
+      <span class="print-brand">Simulab</span>
+      <span class="print-context">Reporte de simulación Monte Carlo · <span id="printModelo">—</span></span>
+      <span class="print-date" id="printFecha"></span>
+    </div>
+
+    <main class="container app-main" id="panelResultados">
+      <div class="row g-4">
+        <div class="col-lg-4 col-xl-3 no-print">
+          <section class="card app-card config-card" aria-labelledby="tituloConfiguracion">
+            <div class="card-body">
+              <div class="section-heading">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 19V5M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M7 15v-4M11 15V8M15 15v-6M19 15V6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <div>
+                  <h2 id="tituloConfiguracion">Configura la simulación</h2>
+                  <div class="module-switch" role="group" aria-label="Cambiar entre módulos">
+                    <span class="module-badge module-badge-current" aria-current="page">Monte Carlo</span>
+                    <a class="module-badge module-badge-button" href="/modelos-de-colas" title="Ir al módulo de un servidor">Un servidor</a>
+                    <a class="module-badge module-badge-button" href="/modelos-de-colas/mmc" title="Ir al módulo de varios servidores">Varios servidores</a>
+                  </div>
+                </div>
+              </div>
+
+              <form id="formSimulacion" novalidate>
+                <div class="mb-3">
+                  <label for="distribucion" class="form-label">Distribución <span class="label-muted">a simular</span></label>
+                  <select class="form-select" id="distribucion" name="distribucion" required>
+                    <option value="poisson">Poisson · variable discreta</option>
+                    <option value="exponencial">Exponencial · variable continua</option>
+                  </select>
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-6">
+                    <label for="numVariables" class="form-label">Variables</label>
+                    <div class="has-validation">
+                      <input type="number" class="form-control" id="numVariables" name="numVariables" min="1" max="20" step="1" inputmode="numeric" value="3" required aria-describedby="feedbackNumVariables">
+                      <div class="invalid-feedback" id="feedbackNumVariables">Debe ser un entero entre 1 y 20.</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label for="numObservaciones" class="form-label">Observaciones</label>
+                    <div class="has-validation">
+                      <input type="number" class="form-control" id="numObservaciones" name="numObservaciones" min="10" max="50000" step="1" inputmode="numeric" value="1000" required aria-describedby="feedbackNumObservaciones">
+                      <div class="invalid-feedback" id="feedbackNumObservaciones">Debe ser un entero entre 10 y 50,000.</div>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <label for="modoParametro" class="form-label">Parámetro</label>
+                    <select class="form-select" id="modoParametro" name="modoParametro">
+                      <option value="global">Global · igual para todas las variables</option>
+                      <option value="personalizado">Personalizado · una por variable</option>
+                    </select>
+                  </div>
+
+                  <div class="col-12" id="grupoTipoParametro">
+                    <label for="tipoParametroGlobal" class="form-label">Tipo de parámetro</label>
+                    <select class="form-select" id="tipoParametroGlobal" name="tipoParametroGlobal">
+                      <option value="media">Media · b</option>
+                      <option value="tasa">Tasa · λ</option>
+                    </select>
+                  </div>
+
+                  <div class="col-12" id="grupoParametroGlobal">
+                    <label for="parametroGlobal" class="form-label" id="labelParametroGlobal">λ <span class="label-muted">Media de ocurrencia</span></label>
+                    <div class="input-group has-validation">
+                      <input type="number" class="form-control" id="parametroGlobal" name="parametroGlobal" min="0.000000001" max="10000" step="any" inputmode="decimal" placeholder="Ej. 4" aria-describedby="sufijoParametroGlobal feedbackParametroGlobal">
+                      <span class="input-group-text" id="sufijoParametroGlobal">eventos</span>
+                      <div class="invalid-feedback" id="feedbackParametroGlobal">Ingresa un parámetro mayor que 0.</div>
+                    </div>
+                    <div class="form-text" id="ayudaParametroGlobal">En Poisson, λ es la media de ocurrencias por intervalo.</div>
+                    <div class="mc-equivalencia d-none" id="equivalenciaParametro"></div>
+                  </div>
+
+                  <div class="col-12 d-none" id="grupoVariablesPersonalizadas">
+                    <div class="mc-variables-head">
+                      <label class="form-label mb-0">Parámetros por variable</label>
+                      <button type="button" class="btn btn-link btn-sm" id="btnRestablecerNombres">Usar V1…Vm</button>
+                    </div>
+                    <div id="variablesPersonalizadas" class="mc-variables-list"></div>
+                    <div class="alert alert-danger d-none mt-2" id="variablesError" role="alert"></div>
+                  </div>
+
+                  <div class="col-6">
+                    <label for="confianza" class="form-label">Confianza</label>
+                    <select class="form-select" id="confianza" name="confianza">
+                      <option value="0.90">90 %</option>
+                      <option value="0.95" selected>95 %</option>
+                      <option value="0.99">99 %</option>
+                    </select>
+                  </div>
+                  <div class="col-6">
+                    <label for="semilla" class="form-label">Semilla <span class="label-muted">opcional</span></label>
+                    <div class="has-validation">
+                      <input type="number" class="form-control" id="semilla" name="semilla" step="1" inputmode="numeric" placeholder="Automática" aria-describedby="feedbackSemilla">
+                      <div class="invalid-feedback" id="feedbackSemilla">La semilla debe ser un entero.</div>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="form-text">La misma semilla reproduce exactamente la misma base de datos.</div>
+                  </div>
+                </div>
+
+                <div id="formError" class="alert alert-danger d-none mt-3" role="alert" aria-live="polite"></div>
+
+                <div class="config-actions">
+                  <button type="submit" class="btn btn-primary flex-grow-1" id="btnSimular">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Simular</span>
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" id="btnLimpiar">
+                    Limpiar
+                  </button>
+                </div>
+                <button type="button" class="btn btn-link btn-sm example-link" id="btnEjemplo">
+                  Cargar un ejemplo (Poisson, λ = 4, 3 variables)
+                </button>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <div class="col-lg-8 col-xl-9 area-resultados">
+          <div class="results-heading">
+            <h2>Resultados de la simulación</h2>
+          </div>
+
+          <div class="card app-card panel-card">
+            <div class="card-header panel-tabs-header">
+              <ul class="nav nav-tabs app-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="tab-resumen" data-bs-toggle="tab" data-bs-target="#pane-resumen" type="button" role="tab" aria-controls="pane-resumen" aria-selected="true">Resumen</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-datos" data-bs-toggle="tab" data-bs-target="#pane-datos" type="button" role="tab" aria-controls="pane-datos" aria-selected="false">Base de datos</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-transformada" data-bs-toggle="tab" data-bs-target="#pane-transformada" type="button" role="tab" aria-controls="pane-transformada" aria-selected="false">Transformada</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-graficas" data-bs-toggle="tab" data-bs-target="#pane-graficas" type="button" role="tab" aria-controls="pane-graficas" aria-selected="false">Gráficas</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-historial" data-bs-toggle="tab" data-bs-target="#pane-historial" type="button" role="tab" aria-controls="pane-historial" aria-selected="false">
+                    Historial <span class="tab-count" id="historialCount">0</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="tab-content panel-tab-content" id="mainTabContent">
+              <section class="tab-pane fade show active" id="pane-resumen" role="tabpanel" aria-labelledby="tab-resumen" tabindex="0">
+                <div class="empty-state" id="estadoVacio">
+                  <div class="empty-illustration" aria-hidden="true">
+                    <svg viewBox="0 0 160 110" fill="none">
+                      <rect x="18" y="18" width="124" height="74" rx="14" fill="#eef2ff"/>
+                      <path d="M38 76V56m20 20V42m20 34V50m20 26V34m20 42V46" stroke="#a5b4fc" stroke-width="8" stroke-linecap="round"/>
+                      <circle cx="126" cy="30" r="9" fill="#4f46e5"/>
+                      <path d="M122 30h8M126 26v8" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <p>Elige la distribución, la cantidad de variables y observaciones, y define el parámetro. Después presiona <strong>Simular</strong>.</p>
+                  <span class="empty-hint">También puedes cargar el ejemplo desde el panel izquierdo.</span>
+                </div>
+
+                <div id="resumenContenido" class="d-none">
+                  <div class="result-meta">
+                    <div class="result-meta-left">
+                      <span class="calc-id" id="simulacionId">Simulación #0</span>
+                      <span class="meta-separator" aria-hidden="true"></span>
+                      <span id="simulacionFecha" class="meta-date"></span>
+                    </div>
+                    <span class="model-badge" id="badgeDistribucion">Poisson</span>
+                  </div>
+
+                  <div id="advertenciasSimulacion" class="mb-3" aria-live="polite"></div>
+                  <p class="distribution-note" id="resumenConfiguracion"></p>
+
+                  <div class="row g-3 metric-grid">
+                    <div class="col-6 col-xl-3">
+                      <article class="metric-card metric-rho">
+                        <div class="metric-top"><span class="metric-symbol">N</span><span class="metric-label">Observaciones</span></div>
+                        <strong class="metric-value" id="kpiObservaciones">—</strong>
+                        <span class="metric-caption">Filas de la base de datos</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                      <article class="metric-card metric-p0">
+                        <div class="metric-top"><span class="metric-symbol">m</span><span class="metric-label">Variables</span></div>
+                        <strong class="metric-value" id="kpiVariables">—</strong>
+                        <span class="metric-caption">Columnas simuladas</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                      <article class="metric-card metric-ls">
+                        <div class="metric-top"><span class="metric-symbol">1−α</span><span class="metric-label">Confianza</span></div>
+                        <strong class="metric-value" id="kpiConfianza">—</strong>
+                        <span class="metric-caption">Nivel del intervalo</span>
+                      </article>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                      <article class="metric-card metric-lq">
+                        <div class="metric-top"><span class="metric-symbol">seed</span><span class="metric-label">Semilla</span></div>
+                        <strong class="metric-value" id="kpiSemilla">—</strong>
+                        <span class="metric-caption">Reproducibilidad</span>
+                      </article>
+                    </div>
+                  </div>
+
+                  <div class="row g-4 mt-0">
+                    <div class="col-12">
+                      <div class="subsection-heading">
+                        <h3>Resumen comparativo por variable</h3>
+                      </div>
+                      <div class="table-responsive rounded-table">
+                        <table class="table app-table app-table-compact mc-summary-table align-middle mb-0">
+                          <caption class="visually-hidden">Comparación entre los valores teóricos y simulados de cada variable</caption>
+                          <thead>
+                            <tr>
+                              <th scope="col">Variable</th>
+                              <th scope="col">Parámetro</th>
+                              <th scope="col" class="text-end">Media teórica</th>
+                              <th scope="col" class="text-end">Media simulada</th>
+                              <th scope="col" class="text-end">Desv. teórica</th>
+                              <th scope="col" class="text-end">Desv. simulada</th>
+                              <th scope="col" class="text-end">Error típico</th>
+                              <th scope="col" class="text-end">Error rel. %</th>
+                              <th scope="col" class="text-end">Mínimo</th>
+                              <th scope="col" class="text-end">Máximo</th>
+                              <th scope="col" class="text-end">IC</th>
+                            </tr>
+                          </thead>
+                          <tbody id="tablaResumen"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <div class="insight-card">
+                        <div class="insight-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4M8 14a6 6 0 1 1 8 0c-.9.7-1.3 1.2-1.4 2H9.4C9.3 15.2 8.9 14.7 8 14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Lectura de la simulación</h3>
+                        <ul class="insight-list" id="interpretacion"></ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-datos" role="tabpanel" aria-labelledby="tab-datos" tabindex="0">
+                <div class="empty-state" id="datosVacio">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <rect x="24" y="18" width="92" height="66" rx="9" fill="#eef2ff"/>
+                      <path d="M36 34h68M36 46h68M36 58h68M36 70h44" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h3>Base de datos pendiente</h3>
+                  <p>Ejecuta una simulación para recorrer la base de datos paginada y comprobar el número pseudoaleatorio usado.</p>
+                </div>
+
+                <div id="datosContenido" class="d-none">
+                  <div class="mc-toolbar">
+                    <div class="mc-toolbar-left">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="switchU">
+                        <label class="form-check-label" for="switchU">Mostrar u</label>
+                      </div>
+                      <select class="form-select form-select-sm" id="variableU" aria-label="Variable para mostrar su número pseudoaleatorio" disabled></select>
+                    </div>
+                    <span class="table-count" id="datosConteo">0 filas</span>
+                  </div>
+                  <p class="distribution-note mb-2" id="datosNotaU"></p>
+                  <div class="table-responsive rounded-table mc-data-table-wrap">
+                    <table class="table app-table app-table-compact align-middle mb-0">
+                      <caption class="visually-hidden">Base de datos simulada con una fila por observación</caption>
+                      <thead>
+                        <tr id="datosEncabezados"></tr>
+                      </thead>
+                      <tbody id="tablaDatos"></tbody>
+                    </table>
+                  </div>
+                  <div class="history-pagination" id="datosPaginacion">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDatosPrimera" aria-label="Primera página">«</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDatosAnterior">Anterior</button>
+                    <span class="history-page-label" id="datosPagina">Página 1 de 1</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDatosSiguiente">Siguiente</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDatosUltima" aria-label="Última página">»</button>
+                  </div>
+                  <div class="history-footer-note" id="datosPie"></div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-transformada" role="tabpanel" aria-labelledby="tab-transformada" tabindex="0">
+                <div class="empty-state" id="transformadaVacia">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <path d="M24 74h92M32 74V30m0 44h84" stroke="#a5b4fc" stroke-width="6" stroke-linecap="round"/>
+                      <path d="M34 70c18 0 20-34 34-34s18 34 36 34" stroke="#4f46e5" stroke-width="5" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h3>Tabla de transformada pendiente</h3>
+                  <p>Simula una base de datos para ver la transformada inversa en Poisson o el histograma de frecuencias en Exponencial.</p>
+                </div>
+
+                <div id="transformadaContenido" class="d-none">
+                  <div class="mc-variable-picker">
+                    <label for="variableTransformada" class="form-label mb-0">Variable</label>
+                    <select class="form-select form-select-sm" id="variableTransformada"></select>
+                    <span class="table-count" id="transformadaVariableInfo"></span>
+                  </div>
+                  <p class="distribution-note" id="transformadaNota"></p>
+                  <div class="table-card mt-3">
+                    <div class="table-card-header">
+                      <div>
+                        <h3 id="transformadaTitulo">Tabla de transformada inversa</h3>
+                        <p id="transformadaSubtitulo">Relación entre el número aleatorio y el valor simulado.</p>
+                      </div>
+                      <span class="table-count" id="transformadaConteo">0 filas</span>
+                    </div>
+                    <div class="distribution-table-wrap mc-transform-table-wrap">
+                      <table class="table app-table app-table-compact mb-0">
+                        <caption class="visually-hidden">Tabla de transformada inversa o de frecuencias</caption>
+                        <thead id="transformadaEncabezados"></thead>
+                        <tbody id="tablaTransformada"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-graficas" role="tabpanel" aria-labelledby="tab-graficas" tabindex="0">
+                <div class="empty-state" id="graficasVacio">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <path d="M22 78h96M32 78V26" stroke="#a5b4fc" stroke-width="5" stroke-linecap="round"/>
+                      <path d="M40 64 58 42l16 12 18-26 16 10" stroke="#4f46e5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="58" cy="42" r="3.5" fill="#06b6d4"/>
+                      <circle cx="92" cy="28" r="3.5" fill="#06b6d4"/>
+                    </svg>
+                  </div>
+                  <h3>Gráficas pendientes</h3>
+                  <p>Después de simular podrás comparar la distribución, la CDF y la convergencia de la media.</p>
+                </div>
+
+                <div id="graficasContenido" class="d-none">
+                  <div class="mc-variable-picker">
+                    <label for="variableGraficas" class="form-label mb-0">Variable</label>
+                    <select class="form-select form-select-sm" id="variableGraficas"></select>
+                    <span class="table-count" id="graficasVariableInfo"></span>
+                  </div>
+                  <p class="distribution-note" id="graficasNota"></p>
+                  <div class="row g-4">
+                    <div class="col-xl-6">
+                      <div class="chart-card h-100">
+                        <div class="chart-header">
+                          <div>
+                            <h3>Distribución simulada vs. teórica</h3>
+                            <p id="subtituloDistribucion">Frecuencia relativa observada y probabilidad teórica.</p>
+                          </div>
+                          <span class="chart-symbol" id="simboloDistribucion">f(x)</span>
+                        </div>
+                        <div class="chart-wrap">
+                          <canvas id="graficaDistribucion" aria-label="Gráfica de distribución simulada y teórica" role="img"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-xl-6">
+                      <div class="chart-card h-100">
+                        <div class="chart-header">
+                          <div>
+                            <h3>CDF empírica vs. teórica</h3>
+                            <p>Probabilidad acumulada de la base simulada y de la distribución teórica.</p>
+                          </div>
+                          <span class="chart-symbol">F(x)</span>
+                        </div>
+                        <div class="chart-wrap">
+                          <canvas id="graficaCDF" aria-label="Gráfica de la función de distribución acumulada" role="img"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <div class="chart-card">
+                        <div class="chart-header">
+                          <div>
+                            <h3>Convergencia de la media</h3>
+                            <p>Media acumulada conforme crece el número de observaciones, comparada con la media teórica.</p>
+                          </div>
+                          <span class="chart-symbol">x̄</span>
+                        </div>
+                        <div class="chart-wrap">
+                          <canvas id="graficaConvergencia" aria-label="Gráfica de convergencia de la media simulada" role="img"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="tab-pane fade" id="pane-historial" role="tabpanel" aria-labelledby="tab-historial" tabindex="0">
+                <div class="history-header">
+                  <div>
+                    <h3>Simulaciones recientes</h3>
+                    <p id="historialInfo">Las simulaciones Monte Carlo se guardan automáticamente en SQLite.</p>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefrescarHistorial">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 9a7 7 0 0 1 11.4-2L20 12M4 12l2.5 5a7 7 0 0 0 11.4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Actualizar
+                  </button>
+                </div>
+
+                <div id="historialCargando" class="history-loading d-none" aria-live="polite">
+                  <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                  Cargando historial…
+                </div>
+                <div id="historialVacio" class="empty-state compact d-none">
+                  <div class="empty-illustration compact" aria-hidden="true">
+                    <svg viewBox="0 0 140 100" fill="none">
+                      <rect x="32" y="22" width="76" height="58" rx="9" fill="#eef2ff"/>
+                      <path d="M45 40h50M45 53h42M45 66h30" stroke="#a5b4fc" stroke-width="5" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h3>Sin simulaciones guardadas</h3>
+                  <p>Ejecuta tu primera simulación para verla en el historial.</p>
+                </div>
+                <div class="table-responsive rounded-table d-none" id="historialTablaWrap">
+                  <table class="table app-table history-table align-middle mb-0">
+                    <caption class="visually-hidden">Historial de simulaciones Monte Carlo guardadas</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Fecha</th>
+                        <th scope="col">Distribución</th>
+                        <th scope="col" class="text-end">Variables</th>
+                        <th scope="col" class="text-end">Observaciones</th>
+                        <th scope="col" class="text-end">Semilla</th>
+                        <th scope="col" class="text-end">Media sim.</th>
+                        <th scope="col" class="text-end">Error rel.</th>
+                        <th scope="col" class="text-end">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaHistorial"></tbody>
+                  </table>
+                </div>
+                <div class="history-pagination d-none" id="historialPaginacion">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHistorialAnterior">
+                    Anterior
+                  </button>
+                  <span class="history-page-label" id="historialPagina">Página 1 de 1</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHistorialSiguiente">
+                    Siguiente
+                  </button>
+                </div>
+                <div class="history-footer-note" id="historialPie"></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="report-actions mc-report-actions">
+            <button type="button" class="btn btn-outline-primary" id="btnPDF" disabled>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Generar PDF</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="btnImprimir" disabled>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 13h10v7H7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Imprimir</span>
+            </button>
+          </div>
+
+          <nav class="section-navigation" aria-label="Navegación entre secciones">
+            <button type="button" class="btn btn-outline-primary" id="btnSiguienteSeccion" aria-label="Ver base de datos">
+              <span id="btnSiguienteTexto">Ver base de datos</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <button class="theme-toggle" type="button" data-tema-toggle aria-label="Activar tema oscuro" aria-pressed="false" title="Cambiar a tema oscuro">
+    <span class="theme-toggle-icon theme-toggle-sun" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span class="theme-toggle-icon theme-toggle-moon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </span>
+  </button>
+
+  <div class="modal fade" id="guiaMC" tabindex="-1" aria-labelledby="guiaMCTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+      <div class="modal-content guia-modal">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="guiaMCTitulo">Guía rápida · Monte Carlo</h2>
+            <p class="guia-subtitulo">Cómo simular una base de datos con Poisson o Exponencial</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar guía"></button>
+        </div>
+        <div class="modal-body">
+          <p class="guia-intro">
+            El módulo genera números pseudoaleatorios u ∈ (0, 1) y los transforma con
+            la función inversa de la distribución elegida. Cada variable produce una
+            columna de la base de datos y cada observación produce una fila.
+          </p>
+
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <section class="guia-modelo" aria-labelledby="guiaMCPoisson">
+                <h3 id="guiaMCPoisson">Poisson · variable discreta</h3>
+                <dl class="guia-campos">
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">λ</span> Media de ocurrencia</dt>
+                    <dd>Cantidad promedio de eventos por intervalo. Ej. 4 llegadas por hora. Debe ser mayor que 0 y como máximo 10,000.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">k</span> Valor simulado</dt>
+                    <dd>Entero no negativo. Se elige el menor k cuya probabilidad acumulada F(k) supera el número u generado.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">P</span> Probabilidad</dt>
+                    <dd>P(X = k) = e^(−λ) · λ^k / k!. La tabla muestra el intervalo [F(k−1), F(k)) que produce cada valor.</dd>
+                  </div>
+                </dl>
+                <p class="guia-ejemplo">Ejemplo: λ = 4 y 1,000 observaciones generan una columna con media cercana a 4 y desviación cercana a 2.</p>
+              </section>
+            </div>
+
+            <div class="col-lg-6">
+              <section class="guia-modelo" aria-labelledby="guiaMCExponencial">
+                <h3 id="guiaMCExponencial">Exponencial · variable continua</h3>
+                <dl class="guia-campos">
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">b</span> Media</dt>
+                    <dd>Tiempo promedio entre eventos. Ej. 2.5 minutos. También puedes ingresar la tasa λ; el sistema muestra la equivalencia b = 1/λ.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">x</span> Valor simulado</dt>
+                    <dd>x = −b · ln(u). El número u se mantiene dentro de (0, 1) para evitar logaritmos de cero.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">f</span> Densidad</dt>
+                    <dd>f(x) = (1/b) · e^(−x/b). La media y la desviación estándar teóricas son iguales a b.</dd>
+                  </div>
+                </dl>
+                <p class="guia-ejemplo">Ejemplo: b = 2.5 y 1,000 observaciones producen una media cercana a 2.5 y un histograma decreciente.</p>
+              </section>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+              <section class="guia-modelo" aria-labelledby="guiaMCParametros">
+                <h3 id="guiaMCParametros">Parámetro global o personalizado</h3>
+                <dl class="guia-campos">
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">G</span> Global</dt>
+                    <dd>Todas las variables usan el mismo parámetro. Es la opción más rápida para comparar réplicas independientes.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">V</span> Personalizado</dt>
+                    <dd>Asigna un nombre y un parámetro distinto a cada variable. En Exponencial puedes elegir media o tasa por variable.</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+            <div class="col-lg-6">
+              <section class="guia-modelo" aria-labelledby="guiaMCReproducibilidad">
+                <h3 id="guiaMCReproducibilidad">Confianza y semilla</h3>
+                <dl class="guia-campos">
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">IC</span> Confianza</dt>
+                    <dd>Nivel del intervalo para la media: 90 %, 95 % o 99 %. El intervalo usa el error típico s/√N y el valor z correspondiente.</dd>
+                  </div>
+                  <div class="guia-campo">
+                    <dt><span class="guia-simbolo">u</span> Semilla</dt>
+                    <dd>Si la indicas, la misma configuración reproduce la misma base. Si la dejas vacía, se genera una semilla automática y se guarda en el historial.</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </div>
+
+          <p class="guia-nota">
+            <strong>La base se pagina de 50 en 50 filas.</strong> El interruptor
+            «Mostrar u» permite ver el número pseudoaleatorio de las primeras tres
+            variables para comprobar manualmente la transformada inversa. Los
+            reportes PDF e impresión incluyen el resumen, la tabla de transformada o
+            frecuencias, las gráficas y una muestra de las primeras 50 observaciones.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/bootstrap.bundle.min.js"></script>
+  <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/vendor/jspdf.umd.min.js"></script>
+  <script src="/vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="/theme.js"></script>
+  <script src="/montecarlo.js"></script>
+</body>
+</html>

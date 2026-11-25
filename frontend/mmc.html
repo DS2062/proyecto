@@ -53,8 +53,6 @@
             </svg>
             <span class="btn-guia-texto">Guía</span>
           </button>
-          <a class="module-badge module-badge-button" href="/modelos-de-colas" title="Ir al módulo M/M/1">M/M/1</a>
-          <span class="module-badge module-badge-current" aria-current="page">M/M/c</span>
         </div>
       </div>
     </nav>
@@ -80,14 +78,18 @@
                 </span>
                 <div>
                   <h2 id="tituloConfiguracion">Configura el modelo</h2>
+                  <div class="module-switch" role="group" aria-label="Cambiar entre módulos">
+                    <span class="module-badge module-badge-current" aria-current="page">Varios servidores</span>
+                    <a class="module-badge module-badge-button" href="/modelos-de-colas" title="Cambiar al módulo de un servidor">Un servidor</a>
+                    <a class="module-badge module-badge-button" href="/simulacion-montecarlo" title="Cambiar al módulo de simulación Monte Carlo">Monte Carlo</a>
+                  </div>
                 </div>
               </div>
 
               <form id="formCalculo" novalidate>
                 <div class="mb-3">
-                  <label for="modelo" class="form-label">Modelo de cola</label>
-                  <select class="form-select" id="modelo" name="modelo" required>
-                    <option value="mmc_infinito">M/M/c:(DG/∞/∞) · Varios servidores</option>
+                  <select class="form-select" id="modelo" name="modelo" aria-label="Modelo de cola" required>
+                    <option value="mmc_infinito">M/M/c:(DG/∞/∞) · Cola ilimitada</option>
                     <option value="mmc_finito">M/M/c:(DG/N/∞) · Capacidad limitada</option>
                   </select>
                 </div>
@@ -201,7 +203,6 @@
                       <path d="M127 26v14M120 33h14" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
                     </svg>
                   </div>
-                  <h3>Aún no hay resultados</h3>
                   <p>Ingresa λ, μ, el número de servidores c y, si corresponde, la capacidad N. Después presiona <strong>Calcular</strong>.</p>
                   <span class="empty-hint">También puedes cargar el ejemplo desde el panel izquierdo.</span>
                 </div>
@@ -330,10 +331,6 @@
                         </div>
                         <h3>Lectura del sistema</h3>
                         <ul class="insight-list" id="interpretacion"></ul>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-auto" id="btnIrDistribucion">
-                          Ver distribución
-                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -556,6 +553,15 @@
               <span>Generar PDF</span>
             </button>
           </div>
+
+          <nav class="section-navigation" aria-label="Navegación entre secciones">
+            <button type="button" class="btn btn-outline-primary" id="btnSiguienteSeccion" aria-label="Ver distribución">
+              <span id="btnSiguienteTexto">Ver distribución</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </nav>
         </div>
       </div>
     </main>

@@ -53,8 +53,6 @@
             </svg>
             <span class="btn-guia-texto">Guía</span>
           </button>
-          <a class="module-badge module-badge-button" href="/modelos-de-colas/mmc" title="Ir al módulo M/M/c">M/M/c</a>
-          <span class="module-badge module-badge-current" aria-current="page">M/M/1</span>
         </div>
       </div>
     </nav>
@@ -74,13 +72,17 @@
                 </span>
                 <div>
                   <h2 id="tituloConfiguracion">Configura el modelo</h2>
+                  <div class="module-switch" role="group" aria-label="Cambiar entre módulos">
+                    <a class="module-badge module-badge-button" href="/modelos-de-colas/mmc" title="Cambiar al módulo de varios servidores">Varios servidores</a>
+                    <a class="module-badge module-badge-button" href="/simulacion-montecarlo" title="Cambiar al módulo de simulación Monte Carlo">Monte Carlo</a>
+                    <span class="module-badge module-badge-current" aria-current="page">Un servidor</span>
+                  </div>
                 </div>
               </div>
 
               <form id="formCalculo" novalidate>
                 <div class="mb-3">
-                  <label for="modelo" class="form-label">Modelo de cola</label>
-                  <select class="form-select" id="modelo" name="modelo" required>
+                  <select class="form-select" id="modelo" name="modelo" aria-label="Modelo de cola" required>
                     <option value="mm1_infinito">M/M/1:(DG/∞/∞) · Cola ilimitada</option>
                     <option value="mm1_finito">M/M/1:(DG/N/∞) · Capacidad limitada</option>
                   </select>
@@ -185,7 +187,6 @@
                       <path d="M127 30v18M118 39h18" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
                     </svg>
                   </div>
-                  <h3>Aún no hay resultados</h3>
                   <p>Ingresa λ, μ y, si corresponde, la capacidad N. Después presiona <strong>Calcular</strong>.</p>
                   <span class="empty-hint">También puedes cargar el ejemplo desde el panel izquierdo.</span>
                 </div>
@@ -300,10 +301,6 @@
                         </div>
                         <h3>Lectura del sistema</h3>
                         <ul class="insight-list" id="interpretacion"></ul>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-auto" id="btnIrDistribucion">
-                          Ver distribución
-                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -525,6 +522,15 @@
               <span>Generar PDF</span>
             </button>
           </div>
+
+          <nav class="section-navigation" aria-label="Navegación entre secciones">
+            <button type="button" class="btn btn-outline-primary" id="btnSiguienteSeccion" aria-label="Ver distribución">
+              <span id="btnSiguienteTexto">Ver distribución</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </nav>
         </div>
       </div>
     </main>

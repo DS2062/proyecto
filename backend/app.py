@@ -16,14 +16,22 @@ from werkzeug.exceptions import HTTPException
 from database import (
     eliminar_calculo,
     eliminar_calculo_mmc,
+    eliminar_simulacion_montecarlo,
     guardar_calculo,
     guardar_calculo_mmc,
+    guardar_simulacion_montecarlo,
     init_app as init_database_app,
     init_db,
     listar_calculos_analiticos,
     listar_calculos_mmc,
+    listar_simulaciones_montecarlo,
     obtener_calculo,
     obtener_calculo_mmc,
+    obtener_simulacion_montecarlo,
+)
+from montecarlo import (
+    MAX_VARIABLES,
+    simular_montecarlo,
 )
 from queueing import (
     ErrorValidacion,
@@ -255,6 +263,139 @@ def _query_entero(nombre: str, predeterminado: int, minimo: int, maximo: int) ->
     return valor
 
 
+def _leer_json(texto: Any, defecto: Any) -> Any:
+    try:
+        return json.loads(texto) if texto else defecto
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return defecto
+
+
+def _compactar_variable(variable: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "indice": variable.get("indice"),
+        "nombre": variable.get("nombre"),
+        "parametro": variable.get("parametro"),
+        "tipo_parametro": variable.get("tipo_parametro"),
+        "parametro_etiqueta": variable.get("parametro_etiqueta"),
+        "media_teorica": variable.get("media_teorica"),
+        "desviacion_teorica": variable.get("desviacion_teorica"),
+        "media_simulada": variable.get("media_simulada"),
+        "desviacion_simulada": variable.get("desviacion_simulada"),
+        "error_tipico": variable.get("error_tipico"),
+        "ic_inferior": variable.get("ic_inferior"),
+        "ic_superior": variable.get("ic_superior"),
+        "error_relativo_pct": variable.get("error_relativo_pct"),
+        "minimo": variable.get("minimo"),
+        "maximo": variable.get("maximo"),
+    }
+
+
+def _recurso_simulacion(
+    configuracion: dict[str, Any],
+    resumen: dict[str, Any],
+    simulacion_id: int,
+    timestamp: str,
+    incluir_tablas: bool = False,
+    compacta: bool = False,
+) -> dict[str, Any]:
+    variables_brutas = resumen.get("variables") or []
+    variables: list[dict[str, Any]] = []
+    for variable in variables_brutas:
+        if compacta:
+            variables.append(_compactar_variable(variable))
+            continue
+        item = {
+            clave: valor
+            for clave, valor in variable.items()
+            if clave not in {"tabla", "puntos_teoricos"}
+        }
+        if incluir_tablas:
+            item["tabla"] = variable.get("tabla", [])
+            item["puntos_teoricos"] = variable.get("puntos_teoricos", [])
+        variables.append(item)
+
+    return {
+        "id": simulacion_id,
+        "timestamp": timestamp,
+        "distribucion": configuracion.get("distribucion"),
+        "distribucion_etiqueta": configuracion.get("distribucion_etiqueta")
+        or configuracion.get("distribucion", "").title(),
+        "num_variables": configuracion.get("num_variables"),
+        "num_observaciones": configuracion.get("num_observaciones"),
+        "semilla": configuracion.get("semilla"),
+        "semilla_solicitada": configuracion.get("semilla_solicitada"),
+        "confianza": configuracion.get("confianza"),
+        "alpha": configuracion.get("alpha"),
+        "z": configuracion.get("z"),
+        "modo_parametro": configuracion.get("modo_parametro"),
+        "parametro_global": configuracion.get("parametro_global"),
+        "variables": variables,
+        "resumen_global": resumen.get("global") or {},
+        "vista_previa": resumen.get("vista_previa") or {},
+        "total_observaciones": configuracion.get("num_observaciones"),
+    }
+
+
+def _recurso_historial_montecarlo(fila: dict[str, Any]) -> dict[str, Any]:
+    parametros = _leer_json(fila.get("parametros_json"), {})
+    resumen = _leer_json(fila.get("resumen_estadistico_json"), {})
+    recurso = _recurso_simulacion(
+        parametros,
+        resumen,
+        int(fila["id"]),
+        fila["timestamp"],
+        compacta=True,
+    )
+    recurso["distribucion"] = fila.get("distribucion")
+    recurso["num_variables"] = fila.get("num_variables")
+    recurso["num_observaciones"] = fila.get("num_observaciones")
+    recurso["semilla"] = fila.get("semilla")
+    return recurso
+
+
+def _pagina_datos_simulacion(
+    fila: dict[str, Any], offset: int, limite: int, incluir_u: bool, variable_u: int
+) -> dict[str, Any]:
+    datos = _leer_json(fila.get("datos_muestra_json"), {})
+    filas_guardadas = datos.get("filas") or []
+    total = int(datos.get("total") or len(filas_guardadas))
+    columnas_u = list(datos.get("columnas_u") or [])
+    inicio = min(offset, total)
+    fin = min(inicio + limite, total)
+
+    posicion_u = None
+    variable_u_valida = variable_u if variable_u in columnas_u else None
+    if incluir_u and variable_u_valida is not None:
+        posicion_u = columnas_u.index(variable_u_valida)
+
+    filas: list[dict[str, Any]] = []
+    uniformes = datos.get("uniformes") or []
+    for indice in range(inicio, fin):
+        item = {
+            "observacion": indice + 1,
+            "valores": filas_guardadas[indice],
+        }
+        if posicion_u is not None:
+            fila_uniformes = uniformes[indice] if indice < len(uniformes) else []
+            item["u"] = (
+                fila_uniformes[posicion_u]
+                if posicion_u < len(fila_uniformes)
+                else None
+            )
+        filas.append(item)
+
+    return {
+        "total": total,
+        "offset": inicio,
+        "limite": limite,
+        "filas": filas,
+        "variables": datos.get("variables") or [],
+        "columnas_u": columnas_u,
+        "variable_u": variable_u_valida,
+        "incluir_u": posicion_u is not None,
+    }
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(
         __name__,
@@ -308,6 +449,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def modelos_de_colas_mmc():
         return send_from_directory(FRONTEND_DIR, "mmc.html")
 
+    @app.get("/simulacion-montecarlo")
+    def simulacion_montecarlo():
+        return send_from_directory(FRONTEND_DIR, "montecarlo.html")
+
     @app.get("/api/salud")
     def salud():
         return jsonify(
@@ -315,8 +460,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "ok": True,
                 "servicio": "Simulab API",
                 "modulo": "analitico",
-                "modulos": ["analitico", "mmc"],
-                "version": "1.1.0",
+                "modulos": ["analitico", "mmc", "montecarlo"],
+                "version": "1.2.0",
                 "timestamp": _ahora_iso(),
             }
         )
@@ -428,6 +573,154 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 404,
             )
         return jsonify({"ok": True, "mensaje": "Cálculo eliminado correctamente."})
+
+    # ------------------------------------------------------------------
+    # Módulo 3 · Monte Carlo
+    # ------------------------------------------------------------------
+
+    @app.post("/api/montecarlo/simular")
+    def api_montecarlo_simular():
+        datos = request.get_json(silent=True)
+        if datos is None:
+            raise ErrorValidacion(
+                "Envía un cuerpo JSON válido con la distribución, las variables y "
+                "la cantidad de observaciones."
+            )
+
+        timestamp = _ahora_iso()
+        simulacion = simular_montecarlo(datos)
+        simulacion_id = guardar_simulacion_montecarlo(simulacion, timestamp)
+        resumen = {
+            "variables": simulacion["variables"],
+            "global": simulacion["resumen_global"],
+            "vista_previa": simulacion["vista_previa"],
+        }
+        recurso = _recurso_simulacion(
+            simulacion["configuracion"], resumen, simulacion_id, timestamp
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "mensaje": "Simulación realizada y guardada correctamente.",
+                "simulacion": recurso,
+            }
+        )
+
+    @app.get("/api/montecarlo/historial")
+    def api_montecarlo_historial():
+        limite = _query_entero("limite", 20, 1, 100)
+        offset = _query_entero("offset", 0, 0, 10_000_000)
+        filas, total = listar_simulaciones_montecarlo(limite, offset)
+        return jsonify(
+            {
+                "ok": True,
+                "total": total,
+                "limite": limite,
+                "offset": offset,
+                "simulaciones": [
+                    _recurso_historial_montecarlo(fila) for fila in filas
+                ],
+            }
+        )
+
+    @app.get("/api/montecarlo/historial/<int:simulacion_id>")
+    def api_montecarlo_detalle(simulacion_id: int):
+        fila = obtener_simulacion_montecarlo(simulacion_id)
+        if fila is None:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "No existe una simulación con ese identificador.",
+                    }
+                ),
+                404,
+            )
+        parametros = _leer_json(fila.get("parametros_json"), {})
+        resumen = _leer_json(fila.get("resumen_estadistico_json"), {})
+        recurso = _recurso_simulacion(
+            parametros,
+            resumen,
+            simulacion_id,
+            fila["timestamp"],
+        )
+        return jsonify({"ok": True, "simulacion": recurso})
+
+    @app.delete("/api/montecarlo/historial/<int:simulacion_id>")
+    def api_montecarlo_eliminar(simulacion_id: int):
+        eliminado = eliminar_simulacion_montecarlo(simulacion_id)
+        if not eliminado:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "No existe una simulación con ese identificador.",
+                    }
+                ),
+                404,
+            )
+        return jsonify(
+            {"ok": True, "mensaje": "Simulación eliminada correctamente."}
+        )
+
+    @app.get("/api/montecarlo/simulacion/<int:simulacion_id>/variable/<int:indice>")
+    def api_montecarlo_variable(simulacion_id: int, indice: int):
+        fila = obtener_simulacion_montecarlo(simulacion_id)
+        if fila is None:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "No existe una simulación con ese identificador.",
+                    }
+                ),
+                404,
+            )
+        resumen = _leer_json(fila.get("resumen_estadistico_json"), {})
+        variables = resumen.get("variables") or []
+        if indice < 0 or indice >= len(variables):
+            raise ErrorValidacion(
+                "El índice de la variable no existe en esta simulación.",
+                "variable",
+            )
+        parametros = _leer_json(fila.get("parametros_json"), {})
+        return jsonify(
+            {
+                "ok": True,
+                "distribucion": fila.get("distribucion"),
+                "distribucion_etiqueta": parametros.get(
+                    "distribucion_etiqueta", ""
+                ),
+                "variable": variables[indice],
+            }
+        )
+
+    @app.get("/api/montecarlo/simulacion/<int:simulacion_id>/datos")
+    def api_montecarlo_datos(simulacion_id: int):
+        offset = _query_entero("offset", 0, 0, 10_000_000)
+        limite = _query_entero("limite", 50, 1, 200)
+        variable_u = _query_entero("variable_u", 0, 0, MAX_VARIABLES - 1)
+        incluir_u = (request.args.get("incluir_u") or "").strip().lower() in {
+            "1",
+            "true",
+            "si",
+            "sí",
+        }
+        fila = obtener_simulacion_montecarlo(simulacion_id, incluir_datos=True)
+        if fila is None:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "No existe una simulación con ese identificador.",
+                    }
+                ),
+                404,
+            )
+        pagina = _pagina_datos_simulacion(
+            fila, offset, limite, incluir_u, variable_u
+        )
+        return jsonify({"ok": True, **pagina})
 
     @app.errorhandler(ErrorValidacion)
     def _manejar_validacion(error: ErrorValidacion):

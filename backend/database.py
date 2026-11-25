@@ -65,6 +65,23 @@ CREATE INDEX IF NOT EXISTS idx_calculos_mmc_timestamp
     ON calculos_mmc (timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_calculos_mmc_modelo
     ON calculos_mmc (modelo, timestamp DESC);
+
+CREATE TABLE IF NOT EXISTS simulaciones_montecarlo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    distribucion TEXT NOT NULL,
+    num_variables INTEGER NOT NULL,
+    num_observaciones INTEGER NOT NULL,
+    semilla INTEGER,
+    parametros_json TEXT NOT NULL,
+    resumen_estadistico_json TEXT NOT NULL,
+    datos_muestra_json TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_simulaciones_montecarlo_timestamp
+    ON simulaciones_montecarlo (timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_simulaciones_montecarlo_distribucion
+    ON simulaciones_montecarlo (distribucion, timestamp DESC);
 """
 
 
@@ -282,6 +299,130 @@ def eliminar_calculo_mmc(calculo_id: int) -> bool:
     cursor = conexion.execute(
         "DELETE FROM calculos_mmc WHERE id = ?",
         (calculo_id,),
+    )
+    conexion.commit()
+    return cursor.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# Módulo 3 · Simulación de Monte Carlo
+# ---------------------------------------------------------------------------
+
+
+def guardar_simulacion_montecarlo(
+    simulacion: dict[str, Any], timestamp: str
+) -> int:
+    """Guarda una simulación Monte Carlo y devuelve su identificador."""
+
+    configuracion = simulacion["configuracion"]
+    parametros = {
+        "distribucion": configuracion["distribucion"],
+        "distribucion_etiqueta": configuracion["distribucion_etiqueta"],
+        "num_variables": configuracion["num_variables"],
+        "num_observaciones": configuracion["num_observaciones"],
+        "modo_parametro": configuracion["modo_parametro"],
+        "confianza": configuracion["confianza"],
+        "alpha": configuracion["alpha"],
+        "z": configuracion["z"],
+        "semilla": configuracion["semilla"],
+        "semilla_solicitada": configuracion["semilla_solicitada"],
+        "parametro_global": configuracion["parametro_global"],
+        "variables": [
+            {
+                "indice": variable["indice"],
+                "nombre": variable["nombre"],
+                "parametro": variable["parametro"],
+                "tipo_parametro": variable["tipo_parametro"],
+                "media": variable["media"],
+                "tasa": variable["tasa"],
+            }
+            for variable in configuracion["variables"]
+        ],
+    }
+    resumen = {
+        "variables": simulacion["variables"],
+        "global": simulacion["resumen_global"],
+        "vista_previa": simulacion["vista_previa"],
+    }
+
+    conexion = get_db()
+    cursor = conexion.execute(
+        """
+        INSERT INTO simulaciones_montecarlo (
+            timestamp, distribucion, num_variables, num_observaciones, semilla,
+            parametros_json, resumen_estadistico_json, datos_muestra_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            timestamp,
+            configuracion["distribucion"],
+            configuracion["num_variables"],
+            configuracion["num_observaciones"],
+            configuracion["semilla"],
+            json.dumps(parametros, ensure_ascii=False, allow_nan=False),
+            json.dumps(resumen, ensure_ascii=False, allow_nan=False),
+            json.dumps(
+                simulacion["datos"],
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            ),
+        ),
+    )
+    conexion.commit()
+    return int(cursor.lastrowid)
+
+
+def listar_simulaciones_montecarlo(
+    limite: int, offset: int
+) -> tuple[list[dict[str, Any]], int]:
+    conexion = get_db()
+    total = conexion.execute(
+        "SELECT COUNT(*) AS total FROM simulaciones_montecarlo"
+    ).fetchone()["total"]
+
+    filas = conexion.execute(
+        """
+        SELECT id, timestamp, distribucion, num_variables, num_observaciones,
+               semilla, parametros_json, resumen_estadistico_json
+        FROM simulaciones_montecarlo
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+        """,
+        (limite, offset),
+    ).fetchall()
+
+    return [dict(fila) for fila in filas], int(total)
+
+
+def obtener_simulacion_montecarlo(
+    simulacion_id: int, incluir_datos: bool = False
+) -> dict[str, Any] | None:
+    conexion = get_db()
+    if incluir_datos:
+        fila = conexion.execute(
+            "SELECT * FROM simulaciones_montecarlo WHERE id = ?",
+            (simulacion_id,),
+        ).fetchone()
+    else:
+        fila = conexion.execute(
+            """
+            SELECT id, timestamp, distribucion, num_variables,
+                   num_observaciones, semilla, parametros_json,
+                   resumen_estadistico_json
+            FROM simulaciones_montecarlo
+            WHERE id = ?
+            """,
+            (simulacion_id,),
+        ).fetchone()
+    return dict(fila) if fila is not None else None
+
+
+def eliminar_simulacion_montecarlo(simulacion_id: int) -> bool:
+    conexion = get_db()
+    cursor = conexion.execute(
+        "DELETE FROM simulaciones_montecarlo WHERE id = ?",
+        (simulacion_id,),
     )
     conexion.commit()
     return cursor.rowcount > 0

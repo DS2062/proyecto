@@ -23,6 +23,13 @@
   const MAX_INDICE_PROBABILIDAD = 1000000000;
   const MAX_PUNTOS_GRAFICA = 180;
 
+  const ORDEN_PESTANAS = [
+    { id: "tab-resultados", siguiente: "tab-distribucion", etiqueta: "Ver distribución" },
+    { id: "tab-distribucion", siguiente: "tab-probabilidades", etiqueta: "Ver probabilidades" },
+    { id: "tab-probabilidades", siguiente: "tab-historial", etiqueta: "Ver historial" },
+    { id: "tab-historial", siguiente: "tab-resultados", etiqueta: "Volver a resultados" },
+  ];
+
   const state = {
     calculo: null,
     probabilidad: null,
@@ -154,6 +161,38 @@
     const boton = document.getElementById(idBoton);
     if (!boton || !window.bootstrap?.Tab) return;
     window.bootstrap.Tab.getOrCreateInstance(boton).show();
+  }
+
+  function actualizarBotonSiguiente() {
+    const boton = $("#btnSiguienteSeccion");
+    const texto = $("#btnSiguienteTexto");
+    if (!boton || !texto) return;
+
+    const activo = $("#mainTabs .nav-link.active");
+    const paso =
+      ORDEN_PESTANAS.find((item) => item.id === activo?.id) || ORDEN_PESTANAS[0];
+
+    texto.textContent = paso.etiqueta;
+    boton.dataset.destino = paso.siguiente;
+    boton.setAttribute("aria-label", paso.etiqueta);
+    boton.classList.toggle("es-retorno", paso.siguiente === "tab-resultados");
+  }
+
+  function irASiguienteSeccion() {
+    const boton = $("#btnSiguienteSeccion");
+    const destino = boton?.dataset.destino;
+    if (!destino) return;
+
+    activarTab(destino);
+
+    const encabezado = $("#mainTabs");
+    if (encabezado) {
+      const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      encabezado.scrollIntoView({
+        behavior: reducido ? "auto" : "smooth",
+        block: "start",
+      });
+    }
   }
 
   function idsCamposConfig() {
@@ -321,13 +360,14 @@
     actualizarModeloUI();
     configurarEventos();
     actualizarBotonPDF();
+    actualizarBotonSiguiente();
     void cargarHistorial({ silent: true });
   }
 
   function paletaGraficas() {
     const oscuro = document.documentElement.dataset.tema === "oscuro";
     return {
-      tick: oscuro ? "#94a3b8" : "#8491a5",
+      tick: oscuro ? "#f8fafc" : "#8491a5",
       grid: oscuro ? "#263449" : "#edf1f7",
       tooltipBg: oscuro ? "#020617" : "#0f172a",
       tooltipBorder: oscuro
@@ -374,7 +414,11 @@
     });
 
     $("#btnPDF").addEventListener("click", generarPDF);
-    $("#btnIrDistribucion").addEventListener("click", () => activarTab("tab-distribucion"));
+    $("#btnSiguienteSeccion").addEventListener("click", irASiguienteSeccion);
+
+    $$("#mainTabs .nav-link").forEach((boton) => {
+      boton.addEventListener("shown.bs.tab", actualizarBotonSiguiente);
+    });
 
     $("#tab-distribucion").addEventListener("shown.bs.tab", () => {
       if (state.calculo) void asegurarGraficas(false);
