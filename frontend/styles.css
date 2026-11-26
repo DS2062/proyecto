@@ -263,6 +263,10 @@ h1, h2, h3, h4 {
   box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.14);
 }
 
+.app-navbar .module-badge-current::before {
+  display: none;
+}
+
 .btn-guia {
   display: inline-flex;
   align-items: center;
@@ -485,7 +489,43 @@ h1, h2, h3, h4 {
 }
 
 .config-card .card-body {
-  padding: 1.6rem;
+  padding: 1.85rem;
+}
+
+.config-card .form-label {
+  font-size: 0.9rem;
+}
+
+.config-card .label-muted {
+  font-size: 0.77rem;
+}
+
+.config-card .form-control,
+.config-card .form-select {
+  padding-top: 0.72rem;
+  padding-bottom: 0.72rem;
+  font-size: 0.98rem;
+}
+
+.config-card .input-group-text {
+  font-size: 0.78rem;
+}
+
+.config-card .form-text {
+  font-size: 0.78rem;
+}
+
+.config-card .invalid-feedback {
+  font-size: 0.74rem;
+}
+
+.config-card .config-actions .btn {
+  min-height: 48px;
+  font-size: 0.95rem;
+}
+
+.config-card .example-link {
+  font-size: 0.78rem;
 }
 
 .section-heading {
@@ -514,7 +554,7 @@ h1, h2, h3, h4 {
 
 .section-heading h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.18rem;
   font-weight: 710;
 }
 
@@ -528,57 +568,10 @@ h1, h2, h3, h4 {
 .module-switch {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.4rem;
-  margin-top: 0.55rem;
-}
-
-.config-card .module-badge {
-  padding: 0.32rem 0.68rem;
-  color: var(--ql-text);
-  background: #f1f5f9;
-  border-color: #dbe3ee;
-  box-shadow: none;
-  backdrop-filter: none;
-  font-size: 0.72rem;
-}
-
-.config-card .module-badge-button:hover,
-.config-card .module-badge-button:focus-visible {
-  color: var(--ql-primary-dark);
-  background: #eef2ff;
-  border-color: #c7d2fe;
-  box-shadow: none;
-}
-
-.config-card .module-badge-current {
-  color: #fff;
-  background: var(--ql-primary);
-  border-color: var(--ql-primary);
-  box-shadow: 0 8px 20px -14px rgba(79, 70, 229, 0.8);
-}
-
-.config-card .module-badge-current::before {
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
-}
-
-[data-tema="oscuro"] .config-card .module-badge {
-  color: var(--ql-text);
-  background: #0c1524;
-  border-color: #2b3a52;
-}
-
-[data-tema="oscuro"] .config-card .module-badge-button:hover,
-[data-tema="oscuro"] .config-card .module-badge-button:focus-visible {
-  color: #e0e7ff;
-  background: rgba(99, 102, 241, 0.18);
-  border-color: rgba(129, 140, 248, 0.45);
-}
-
-[data-tema="oscuro"] .config-card .module-badge-current {
-  color: #fff;
-  background: #4f46e5;
-  border-color: #6366f1;
+  margin-top: 0;
+  margin-left: 0.9rem;
 }
 
 .form-label {
@@ -1692,6 +1685,10 @@ h1, h2, h3, h4 {
     font-size: 0.7rem;
   }
 
+  .app-navbar .module-switch {
+    margin-left: 0.6rem;
+  }
+
   .panel-tab-content {
     padding: 1.2rem;
   }
@@ -1768,7 +1765,7 @@ h1, h2, h3, h4 {
   }
 
   .config-card .card-body {
-    padding: 1.25rem;
+    padding: 1.4rem;
   }
 
   .config-actions {
@@ -2516,6 +2513,15 @@ body.modal-open .theme-toggle {
   }
 }
 
+@media (max-width: 599.98px) {
+  .app-navbar .module-switch {
+    order: 3;
+    width: 100%;
+    margin-top: 0.65rem;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 575.98px) {
   .btn-guia {
     width: 38px;
@@ -2922,7 +2928,7 @@ html.tema-cambiando.tema-wipe-final .tema-wipe {
   background: #ecfdf5;
   border: 1px solid #ccfbf1;
   border-radius: 9px;
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -2937,7 +2943,7 @@ html.tema-cambiando.tema-wipe-final .tema-wipe {
 
 .mc-page .mc-variables-head .btn {
   padding: 0;
-  font-size: 0.67rem;
+  font-size: 0.72rem;
   text-decoration: none;
 }
 
@@ -2963,14 +2969,14 @@ html.tema-cambiando.tema-wipe-final .tema-wipe {
 
 .mc-page .mc-variable-index {
   display: grid;
-  flex: 0 0 32px;
+  flex: 0 0 34px;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   color: #4338ca;
   background: #eef2ff;
   border-radius: 9px;
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -3001,7 +3007,7 @@ html.tema-cambiando.tema-wipe-final .tema-wipe {
   min-width: 1.6rem;
   color: #64748b;
   font-family: "Cambria Math", Georgia, serif;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-align: center;
 }
 

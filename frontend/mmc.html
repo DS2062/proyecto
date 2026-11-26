@@ -44,6 +44,11 @@
             <strong>Simulab</strong>
           </span>
         </a>
+        <div class="module-switch" role="group" aria-label="Cambiar entre módulos">
+          <a class="module-badge module-badge-button" href="/modelos-de-colas" title="Cambiar al módulo de un servidor">Un servidor</a>
+          <span class="module-badge module-badge-current" aria-current="page">Varios servidores</span>
+          <a class="module-badge module-badge-button" href="/simulacion-montecarlo" title="Cambiar al módulo de simulación Monte Carlo">Monte Carlo</a>
+        </div>
         <div class="d-flex align-items-center gap-2 ms-auto">
           <button type="button" class="btn-guia" id="btnGuiaMMC" data-bs-toggle="modal" data-bs-target="#guiaMMC" aria-label="Abrir guía para llenar los campos de M/M/c">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -65,7 +70,7 @@
 
     <main class="container app-main" id="panelResultados">
       <div class="row g-4">
-        <div class="col-lg-4 col-xl-3 no-print">
+        <div class="col-lg-4 col-xl-4 no-print">
           <section class="card app-card config-card" aria-labelledby="tituloConfiguracion">
             <div class="card-body">
               <div class="section-heading">
@@ -78,11 +83,6 @@
                 </span>
                 <div>
                   <h2 id="tituloConfiguracion">Configura el modelo</h2>
-                  <div class="module-switch" role="group" aria-label="Cambiar entre módulos">
-                    <span class="module-badge module-badge-current" aria-current="page">Varios servidores</span>
-                    <a class="module-badge module-badge-button" href="/modelos-de-colas" title="Cambiar al módulo de un servidor">Un servidor</a>
-                    <a class="module-badge module-badge-button" href="/simulacion-montecarlo" title="Cambiar al módulo de simulación Monte Carlo">Monte Carlo</a>
-                  </div>
                 </div>
               </div>
 
@@ -165,7 +165,7 @@
           </section>
         </div>
 
-        <div class="col-lg-8 col-xl-9 area-resultados">
+        <div class="col-lg-8 col-xl-8 area-resultados">
           <div class="results-heading">
             <h2>Resultados del sistema</h2>
           </div>
